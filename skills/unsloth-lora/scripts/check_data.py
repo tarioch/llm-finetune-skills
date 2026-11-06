@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from chat_formats import data_system  # noqa: E402
+from chat_format import data_system  # noqa: E402
 
 ROLES = {"system", "user", "assistant"}
 

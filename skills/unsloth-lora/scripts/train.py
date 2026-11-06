@@ -9,8 +9,8 @@ Run it with the Python of the Unsloth environment:
 
 Everything that decides what the model learns is printed instead of hidden: the first example exactly as the
 model sees it, token length statistics (with a warning when examples would be truncated), and the tokens that
-receive loss. ``<out>/run.json`` records the run (arguments, data checksums, losses, chat format, the system
-message the Modelfile needs) for ``export_gguf.py``, ``make_modelfile.py`` and the release notes.
+receive loss. ``<out>/run.json`` records the run (arguments, data checksums, losses) and the ``chat`` section a server
+needs to render prompts like training did (see ``references/run-json.md``).
 """
 
 from __future__ import annotations
@@ -30,14 +30,7 @@ from unsloth.chat_templates import train_on_responses_only  # noqa: E402
 # isort: split
 
 import torch  # noqa: E402
-from chat_formats import (  # noqa: E402
-    FORMATS,
-    data_system,
-    default_system,
-    detect,
-    modelfile_system,
-    rewrites_system,
-)
+from chat_format import FORMATS, chat_record, detect  # noqa: E402
 from datasets import Dataset  # noqa: E402
 from trl import SFTConfig, SFTTrainer  # noqa: E402
 
@@ -98,38 +91,34 @@ def main() -> int:
     train_msgs, val_msgs = read_examples(args.data / "train.jsonl"), read_examples(args.data / "val.jsonl")
     train_text, val_text = [render(m) for m in train_msgs], [render(m) for m in val_msgs]
     fmt = FORMATS[args.format] if args.format else detect(train_text[0])
-    template_default = default_system(fmt, render)
-    usage, data_text = data_system(train_msgs)
-    system = modelfile_system(fmt, render, usage, data_text)
+    chat = chat_record(fmt, render, train_msgs)
 
     print("\n=== first training example, exactly as the model will see it ===")
     print(train_text[0])
     print("=== end of example ===\n")
-    print(f"chat format {fmt.name}; system messages in the data: {usage}; template default: {template_default!r}")
-    print(f"Modelfile SYSTEM: {system!r}")
-    if usage == "mixed":
+    print(f"chat format {fmt.name}; system messages in the data: {chat['system_in_data']}")
+    print(f"system turn a server has to send: {chat['system']!r}")
+    if chat["system_in_data"] == "mixed":
         print(
-            "WARNING: the examples use different system messages, the Modelfile gets no SYSTEM line and every "
-            "caller has to send the right one",
+            "WARNING: the examples use different system messages, so there is no fixed system turn and every "
+            "request has to send the right one",
             file=sys.stderr,
         )
-        if rewrites_system(fmt, render):
+        if chat["template_rewrites_system"]:
             print(
-                "WARNING: this chat template rewrites system messages, so a caller's own system message will not "
+                "WARNING: this chat template rewrites system messages, so a request's own system message will not "
                 "look like training. Use one shared system message or none.",
                 file=sys.stderr,
             )
-    answer_start = train_text[0].rfind(fmt.response_part) + len(fmt.response_part)
-    if train_text[0].startswith("<think>", answer_start):
+    if chat["empty_think"]:
         print(
             "WARNING: the chat template puts an empty <think></think> block in front of the answer, the model will "
             "learn to start its answers with it and the app using the model has to strip it",
             file=sys.stderr,
         )
-    if system is not None and system != system.strip():
+    if chat["system"] is not None and chat["system"] != chat["system"].strip():
         print(
-            "WARNING: the Modelfile SYSTEM starts or ends with whitespace, check that Ollama keeps it "
-            "(compare a request's prompt with the first example above)",
+            "WARNING: the system turn starts or ends with whitespace, check that the server keeps it",
             file=sys.stderr,
         )
 
@@ -182,9 +171,7 @@ def main() -> int:
         eval_dataset=Dataset.from_dict({"text": val_text}),
     )
     if not args.no_response_only:
-        trainer = train_on_responses_only(
-            trainer, instruction_part=fmt.instruction_part, response_part=fmt.response_part
-        )
+        trainer = train_on_responses_only(trainer, instruction_part=fmt.prefix("user"), response_part=fmt.reply_prefix)
     first = trainer.train_dataset[0]
     if "labels" in first:
         # labels are -100 wherever the model is not trained
@@ -217,10 +204,7 @@ def main() -> int:
         "eval_loss": metrics["eval_loss"],
         "steps": result.global_step,
         "peak_gpu_gib": peak,
-        "chat_format": fmt.name,
-        "template_default_system": template_default,
-        "data_system": usage,
-        "modelfile_system": system,
+        "chat": chat,
     }
     (args.out / "run.json").write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
     print(f"saved the LoRA adapter to {adapter} and the run record to {args.out / 'run.json'}")

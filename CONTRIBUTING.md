@@ -8,11 +8,15 @@ path, the project environment exists for the tests and the checks.
 
 | Path | Content |
 |---|---|
-| `skills/unsloth-ollama/SKILL.md` | the workflow Claude follows, frontmatter `name` must match the folder |
-| `skills/unsloth-ollama/scripts/` | the scripts the skill runs, see the docstring of each |
-| `skills/unsloth-ollama/references/` | details SKILL.md points to, read only when needed |
-| `.claude-plugin/` | `plugin.json` (the plugin) and `marketplace.json` (so the repo can be added as a marketplace) |
-| `tests/<skill>/` | tests for a skill, mirroring `skills/<skill>/` (`tests/unsloth-ollama/scripts/test_check_data.py` tests `skills/unsloth-ollama/scripts/check_data.py`); its `conftest.py` puts the skill's `scripts/` on the import path |
+| `skills/<skill>/SKILL.md` | the workflow Claude follows, frontmatter `name` must match the folder |
+| `skills/<skill>/scripts/` | the scripts the skill runs, see the docstring of each |
+| `skills/<skill>/references/` | details SKILL.md points to, read only when needed |
+| `.claude-plugin/` | `plugin.json` (the plugin, all skills) and `marketplace.json` (so the repo can be added as a marketplace) |
+| `tests/<skill>/` | tests for one skill, mirroring `skills/<skill>/` (`tests/unsloth-lora/scripts/test_check_data.py` tests `skills/unsloth-lora/scripts/check_data.py`); its `conftest.py` puts the skill's `scripts/` on the import path |
+| `tests/test_handoff.py` | tests across skills: what `unsloth-lora` records in `run.json` makes `ollama-model` build the prompt training saw |
+| `tests/fixtures/` | fixtures shared by several skills' tests, `chat-templates/` holds real chat templates |
+
+The skills are: `unsloth-lora` (training, GGUF export) and `ollama-model` (Modelfile, evaluation, publishing).
 
 ## Setup and checks
 
@@ -30,15 +34,18 @@ CI runs the same, plus a check of the plugin manifests and the SKILL.md frontmat
 
 ## Scripts
 
-- `check_data.py`, `chat_formats.py`, `make_modelfile.py` and `evaluate.py` use the standard library only, so they
-  run anywhere. `preflight.py`, `train.py` and `export_gguf.py` run in the user's Unsloth environment: import
-  `unsloth` before `transformers`/`trl`, and don't add dependencies it doesn't already have.
-- `train.py` and `export_gguf.py` can't run in CI (no GPU). A change to them is checked with a smoke run
-  (`train.py --max-steps 2`, then `export_gguf.py`) on a GPU machine, say in the pull request what was run.
-- Tests for the scripts that don't need a GPU are required. Fixtures live next to the tests that use them
-  (`tests/unsloth-ollama/scripts/fixtures/` holds real chat templates).
-- A new chat format needs a test against the family's real chat template, see
-  `skills/unsloth-ollama/references/chat-formats.md`.
+- Each skill is self-contained: it is installed on its own, so its scripts import only each other, never another
+  skill's. Script names are unique across skills, as each skill's tests put its `scripts/` on the import path.
+- Skills hand work over through files, documented in both skills (`references/run-json.md` in `unsloth-lora` and
+  `ollama-model`, kept identical by a test). A change to such a file format needs both sides and the handoff test.
+- `unsloth-lora`: `check_data.py` and `chat_format.py` use the standard library only. `preflight.py`, `train.py` and
+  `export_gguf.py` run in the user's Unsloth environment: import `unsloth` before `transformers`/`trl`, and don't
+  add dependencies it doesn't already have. `train.py` and `export_gguf.py` can't run in CI (no GPU): check a change
+  to them with a smoke run (`train.py --max-steps 2`, then `export_gguf.py`) on a GPU machine and say in the pull
+  request what was run.
+- `ollama-model`: standard library only.
+- Tests for the scripts that don't need a GPU are required. A new chat format needs a test against the family's real
+  chat template, see `skills/unsloth-lora/references/chat-formats.md`.
 
 ## Skills
 

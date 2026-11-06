@@ -12,4 +12,5 @@ renders. Each is the `chat_template` of the model's tokenizer, unchanged except 
 
 To add one, copy the template from the model's `tokenizer_config.json` (`chat_template`) or its
 `chat_template.jinja`, or from llama.cpp's `models/templates/`, and add it to `TEMPLATES` in
-`tests/unsloth-ollama/scripts/test_chat_formats.py` with the default system message it inserts.
+`tests/test_handoff.py` (and to `tests/unsloth-lora/scripts/test_chat_format.py` with the default system message it
+inserts).

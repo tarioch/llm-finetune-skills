@@ -31,10 +31,3 @@
   C/C++ toolchain. Point `UNSLOTH_LLAMA_CPP_PATH` at a prebuilt copy instead.
 - **Disk full during export**: the merge writes 16-bit weights first (about 2 bytes per parameter, so ~15 GB for a
   7B model) before quantizing.
-
-## Ollama
-
-- **Answers differ from what training produced**: compare the Modelfile with `run.json` (regenerate it with
-  `make_modelfile.py`), check line endings, and check the request's temperature.
-- **`ollama push` is refused**: the machine's public key (`~/.ollama/id_ed25519.pub`) has to be added to the
-  ollama.com account, and the model name has to start with that account's namespace (`ollama cp` to rename).

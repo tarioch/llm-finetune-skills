@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Merge the LoRA adapter of a ``train.py`` run into its base model, export a GGUF and write a matching Modelfile.
+"""Merge the LoRA adapter of a ``train.py`` run into its base model and export it as a GGUF.
 
 Uses Unsloth's ``save_pretrained_gguf``: it merges into 16-bit weights, then converts and quantizes with llama.cpp
 (a prebuilt copy at ``~/.unsloth/llama.cpp`` or ``UNSLOTH_LLAMA_CPP_PATH``; Unsloth builds one if none is found,
@@ -7,7 +7,7 @@ which needs network access and a C/C++ toolchain). Needs disk for the 16-bit mer
 
 Run it with the Python of the Unsloth environment:
 
-    python export_gguf.py --run outputs/my-3b                  # -> outputs/my-3b/gguf/*.gguf and Modelfile
+    python export_gguf.py --run outputs/my-3b                  # -> outputs/my-3b/gguf/*.gguf, recorded in run.json
     python export_gguf.py --run outputs/my-3b --quant q5_k_m
 """
 
@@ -18,14 +18,8 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 # Unsloth patches transformers/trl when it is imported, so it has to come before them.
 from unsloth import FastLanguageModel  # noqa: E402
-
-# isort: split
-
-from make_modelfile import write_modelfile  # noqa: E402
 
 
 def main() -> int:
@@ -56,13 +50,14 @@ def main() -> int:
     gguf = gguf_files[0]
     print(f"\nwrote {gguf} ({gguf.stat().st_size / 2**30:.2f} GiB)")
 
-    modelfile = write_modelfile(run, gguf.resolve(), args.run / "Modelfile")
-    run["gguf"] = {"file": gguf.name, "quant": args.quant}
+    # relative to the run folder when it is inside it (some Unsloth versions write to <out>_gguf/ instead)
+    gguf, run_dir = gguf.resolve(), args.run.resolve()
+    path = gguf.relative_to(run_dir).as_posix() if gguf.is_relative_to(run_dir) else str(gguf)
+    run["gguf"] = {"path": path, "quant": args.quant}
     run_file.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
     print(
-        f"wrote {modelfile}\n\nNext:\n"
-        f'  ollama create <name>:<tag> -f "{modelfile}"\n'
-        "  python evaluate.py --eval eval.jsonl --model <name>:<tag> --model <previous model>"
+        f"recorded it in {run_file}\n\nNext: package it for a server, e.g. the ollama-model skill:\n"
+        f"  python modelfile.py --run {args.run}"
     )
     return 0
 
