@@ -50,7 +50,7 @@ def main() -> int:
     gguf = gguf_files[0]
     print(f"\nwrote {gguf} ({gguf.stat().st_size / 2**30:.2f} GiB)")
 
-    # relative to the run folder when it is inside it (some Unsloth versions write to <out>_gguf/ instead)
+    # relative to the run folder when it is inside it (Unsloth appends _gguf to the folder it is given)
     gguf, run_dir = gguf.resolve(), args.run.resolve()
     path = gguf.relative_to(run_dir).as_posix() if gguf.is_relative_to(run_dir) else str(gguf)
     run["gguf"] = {"path": path, "quant": args.quant}

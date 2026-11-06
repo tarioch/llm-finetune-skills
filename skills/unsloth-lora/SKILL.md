@@ -12,7 +12,8 @@ model is a separate step: the run folder this skill leaves (GGUF plus `run.json`
 
 All scripts are in `scripts/` next to this file. `check_data.py` needs only the standard library; `preflight.py`,
 `train.py` and `export_gguf.py` run with the Python of the Unsloth environment. Run them by path, from the folder
-where the run should live.
+where the runs should live, not from a git checkout: Unsloth writes an `unsloth_compiled_cache/` folder into the
+current directory.
 
 ## Before you start, find out
 

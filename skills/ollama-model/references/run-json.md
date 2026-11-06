@@ -25,7 +25,7 @@ This file is the same in the `unsloth-lora` and `ollama-model` skills.
     "template_rewrites_system": false,
     "empty_think": false
   },
-  "gguf": {"path": "gguf/unsloth.Q4_K_M.gguf", "quant": "q4_k_m"}
+  "gguf": {"path": "gguf_gguf/qwen2.5-coder-3b-instruct.Q4_K_M.gguf", "quant": "q4_k_m"}
 }
 ```
 
