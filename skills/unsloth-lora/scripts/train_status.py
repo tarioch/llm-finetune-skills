@@ -3,8 +3,8 @@
 
 Reads the newest ``<run>/checkpoints/checkpoint-*/trainer_state.json`` (written at every checkpoint, so it is as
 recent as the last ``--save-steps``) and ``<run>/run.json`` once the run has finished. Prints the step, the latest
-training and validation loss, the step with the lowest validation loss, and an estimate of the time left from the
-times the checkpoints were written. Use it to check a run in the background instead of reading its whole log.
+training and validation loss, the step with the lowest validation loss, and estimates of the current step and the
+time left from the times the checkpoints were written (the losses are as of the last checkpoint). Use it to check a run in the background instead of reading its whole log.
 
     python train_status.py outputs/my-3b
 
@@ -68,8 +68,11 @@ def status(run: Path, now: float | None = None) -> dict:
         seconds = (new / "trainer_state.json").stat().st_mtime - (old / "trainer_state.json").stat().st_mtime
         if new_step > old_step and seconds > 0:
             per_step = seconds / (new_step - old_step)
+            # the run went on since the last checkpoint: estimate where it is now, not where it was then
+            now_step = min(result["step"] + int(result["last_checkpoint_age"] / per_step), result["max_steps"])
             result["seconds_per_step"] = per_step
-            result["seconds_left"] = max(result["max_steps"] - result["step"], 0) * per_step
+            result["estimated_step"] = now_step
+            result["seconds_left"] = (result["max_steps"] - now_step) * per_step
     return result
 
 
@@ -90,6 +93,8 @@ def describe(s: dict) -> str:
             [f"finished after {s['step']} steps", *losses, "exported" if s["exported"] else "not exported yet"]
         )
     parts = [f"step {s['step']}/{s['max_steps']}" if s["max_steps"] else f"step {s['step']}"]
+    if s.get("estimated_step", s["step"]) > s["step"]:
+        parts[0] = f"step about {s['estimated_step']}/{s['max_steps']} (last checkpoint at {s['step']})"
     if s["train_loss"] is not None:
         parts.append(f"train loss {s['train_loss']:.4f}")
     if s["eval_loss"] is not None:

@@ -23,12 +23,22 @@ HISTORY = [
 def test_running(tmp_path):
     checkpoint(tmp_path, 100, 1000, HISTORY[:2])
     checkpoint(tmp_path, 200, 1200, HISTORY)
-    s = train_status.status(tmp_path, now=1260)
+    s = train_status.status(tmp_path, now=1200)
     assert (s["step"], s["max_steps"], s["train_loss"], s["eval_loss"]) == (200, 300, 0.6, 0.7)
     assert s["best_eval"] == (200, 0.7) and s["seconds_per_step"] == 2.0 and s["seconds_left"] == 200.0
     text = train_status.describe(s)
     assert text.startswith("step 200/300, train loss 0.6000, validation loss 0.7000")
-    assert "about 3 min left (2.0 s per step)" in text and "last checkpoint 1 min ago" in text
+    assert "about 3 min left (2.0 s per step)" in text and "last checkpoint 0 s ago" in text
+
+
+def test_time_since_the_last_checkpoint_counts(tmp_path):
+    checkpoint(tmp_path, 100, 1000, HISTORY[:2])
+    checkpoint(tmp_path, 200, 1200, HISTORY)
+    s = train_status.status(tmp_path, now=1260)  # 60 s at 2 s per step: about 30 steps further
+    assert s["estimated_step"] == 230 and s["seconds_left"] == 140.0
+    text = train_status.describe(s)
+    assert text.startswith("step about 230/300 (last checkpoint at 200)") and "about 2 min left" in text
+    assert train_status.status(tmp_path, now=99999)["seconds_left"] == 0
 
 
 def test_best_step_is_not_the_last(tmp_path):
