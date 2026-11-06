@@ -7,7 +7,7 @@ which needs network access and a C/C++ toolchain). Needs disk for the 16-bit mer
 
 Run it with the Python of the Unsloth environment:
 
-    python export_gguf.py --run outputs/my-3b                  # -> outputs/my-3b/gguf/*.gguf, recorded in run.json
+    python export_gguf.py --run outputs/my-3b                  # -> outputs/my-3b/gguf_gguf/*.gguf, recorded in run.json
     python export_gguf.py --run outputs/my-3b --quant q5_k_m
 """
 
