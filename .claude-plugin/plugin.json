@@ -1,0 +1,12 @@
+{
+  "name": "llm-finetune",
+  "description": "Fine-tune LLMs with a LoRA on a local GPU (Unsloth) and serve them with Ollama, with a Modelfile that matches training and a side-by-side evaluation.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Patrick Ruckstuhl"
+  },
+  "homepage": "https://github.com/tarioch/llm-finetune-skills",
+  "repository": "https://github.com/tarioch/llm-finetune-skills",
+  "license": "MIT",
+  "keywords": ["fine-tuning", "lora", "unsloth", "ollama", "gguf"]
+}
