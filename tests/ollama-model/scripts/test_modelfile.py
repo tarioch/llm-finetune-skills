@@ -70,7 +70,7 @@ def test_main_writes_lf_only_modelfile(tmp_path, monkeypatch, capsys):
     assert modelfile.main() == 0
     data = (tmp_path / "Modelfile").read_bytes()
     assert b"\r" not in data
-    assert data.startswith(f"FROM {(tmp_path / 'gguf' / 'm.gguf').resolve()}\n".encode())
+    assert data.startswith(b"FROM ./gguf/m.gguf\n")
     assert "empty <think></think> block" in capsys.readouterr().err
 
 
@@ -78,3 +78,8 @@ def test_main_needs_a_chat_section(tmp_path, monkeypatch):
     (tmp_path / "run.json").write_text("{}")
     monkeypatch.setattr("sys.argv", ["modelfile.py", "--run", str(tmp_path), "--gguf", "m.gguf"])
     assert modelfile.main() == 2
+
+
+def test_from_path_is_relative_to_the_modelfile(tmp_path):
+    assert modelfile.from_path(tmp_path / "run" / "gguf_gguf" / "m.gguf", tmp_path / "run") == "./gguf_gguf/m.gguf"
+    assert modelfile.from_path(tmp_path / "other" / "m.gguf", tmp_path / "run") == "../other/m.gguf"

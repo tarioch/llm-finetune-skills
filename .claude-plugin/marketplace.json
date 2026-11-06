@@ -1,5 +1,6 @@
 {
   "name": "llm-finetune-skills",
+  "description": "Claude skills for fine-tuning open LLMs on your own GPU (Unsloth) and serving them with Ollama.",
   "owner": {
     "name": "Patrick Ruckstuhl"
   },

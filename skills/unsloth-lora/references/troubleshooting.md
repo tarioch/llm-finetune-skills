@@ -25,7 +25,19 @@
   display-heavy process, or memory spills into shared system memory (Windows does that instead of failing), check
   "Shared GPU memory" in Task Manager.
 
+## Harmless notices
+
+- `torchcodec`/FFmpeg warnings when Unsloth is imported: audio support is off, text training doesn't need it.
+- `The tokenizer has new PAD/BOS/EOS tokens ... {'bos_token_id': None}`: Qwen models have no BOS token, Unsloth
+  only reports aligning the config with the tokenizer.
+- Deprecation warnings from transformers (`use_return_dict`, `has_cuda` and similar).
+
 ## Export
+
+- **Unsloth reports `[CRITICAL] Harvests environment variables/secrets AND makes network calls`** about llama.cpp's
+  `gguf-py/gguf/utility.py`: that is llama.cpp's code for reading safetensors from Hugging Face, which sends
+  `HF_TOKEN` if one is set. The export doesn't need it (it converts local files). Tell the user; to use a converter
+  they reviewed, point `UNSLOTH_LLAMA_CPP_SCRIPTS_DIR` at it.
 
 - **llama.cpp missing or build fails**: Unsloth builds llama.cpp on first export, which needs network access and a
   C/C++ toolchain. Point `UNSLOTH_LLAMA_CPP_PATH` at a prebuilt copy instead.

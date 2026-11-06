@@ -3,7 +3,9 @@
 
 Uses Unsloth's ``save_pretrained_gguf``: it merges into 16-bit weights, then converts and quantizes with llama.cpp
 (a prebuilt copy at ``~/.unsloth/llama.cpp`` or ``UNSLOTH_LLAMA_CPP_PATH``; Unsloth builds one if none is found,
-which needs network access and a C/C++ toolchain). Needs disk for the 16-bit merge on top of the GGUF itself.
+which needs network access and a C/C++ toolchain). Needs disk for the 16-bit merge on top of the GGUF itself; the
+merged model is removed afterwards unless ``--keep-merged`` is given, and so is the Modelfile Unsloth writes next to
+the GGUF (it uses the stock template, not the layout training used).
 
 Run it with the Python of the Unsloth environment:
 
@@ -18,14 +20,21 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 # Unsloth patches transformers/trl when it is imported, so it has to come before them.
 from unsloth import FastLanguageModel  # noqa: E402
+
+# isort: split
+
+from export_files import find_ggufs, finish  # noqa: E402
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", type=Path, required=True, help="the run folder train.py wrote (adapter/, run.json)")
     ap.add_argument("--quant", default="q4_k_m", help="llama.cpp quantization method (default: %(default)s)")
+    ap.add_argument("--keep-merged", action="store_true", help="keep the merged 16-bit model after the export")
     args = ap.parse_args()
 
     adapter, run_file = args.run / "adapter", args.run / "run.json"
@@ -42,18 +51,17 @@ def main() -> int:
     print(f"merging and exporting a {args.quant} GGUF to {out} ...")
     result = model.save_pretrained_gguf(str(out), tokenizer, quantization_method=args.quant)
 
-    gguf_files = [Path(p) for p in result.get("gguf_files", [])] if isinstance(result, dict) else []
-    gguf_files = gguf_files or sorted(out.glob("*.gguf"))
+    reported = result.get("gguf_files", []) if isinstance(result, dict) else []
+    gguf_files = find_ggufs(out, reported)
     if not gguf_files:
         print("export finished but no .gguf file was found, check the output above", file=sys.stderr)
         return 1
     gguf = gguf_files[0]
     print(f"\nwrote {gguf} ({gguf.stat().st_size / 2**30:.2f} GiB)")
 
-    # relative to the run folder when it is inside it (Unsloth appends _gguf to the folder it is given)
-    gguf, run_dir = gguf.resolve(), args.run.resolve()
-    path = gguf.relative_to(run_dir).as_posix() if gguf.is_relative_to(run_dir) else str(gguf)
-    run["gguf"] = {"path": path, "quant": args.quant}
+    run["gguf"], notes = finish(args.run, out, gguf, args.quant, args.keep_merged)
+    for note in notes:
+        print(note)
     run_file.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
     print(
         f"recorded it in {run_file}\n\nNext: package it for a server, e.g. the ollama-model skill:\n"

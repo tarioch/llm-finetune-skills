@@ -25,7 +25,12 @@ This file is the same in the `unsloth-lora` and `ollama-model` skills.
     "template_rewrites_system": false,
     "empty_think": false
   },
-  "gguf": {"path": "gguf_gguf/qwen2.5-coder-3b-instruct.Q4_K_M.gguf", "quant": "q4_k_m"}
+  "gguf": {
+    "path": "gguf_gguf/qwen2.5-coder-3b-instruct.Q4_K_M.gguf",
+    "quant": "q4_k_m",
+    "bytes": 1929935584,
+    "sha256": "<sha256 of the GGUF>"
+  }
 }
 ```
 
@@ -43,4 +48,5 @@ followed by `reply_prefix`, after which the model writes its answer and ends it 
 | `template_rewrites_system` | the chat template changes a given system message (e.g. SmolLM3 wraps it), so with `mixed` a request's own message won't look like training |
 | `empty_think` | the template put an empty `<think></think>` block in front of every trained answer, so the model writes one and the app has to strip it |
 
-The GGUF's `path` is relative to the run folder, or absolute when the GGUF was written elsewhere.
+The GGUF's `path` is relative to the run folder, or absolute when the GGUF was written elsewhere. `bytes` and
+`sha256` identify the exact file, for release notes.

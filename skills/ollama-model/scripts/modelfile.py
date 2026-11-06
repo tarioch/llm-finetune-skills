@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -77,8 +78,20 @@ def render_prompt(modelfile_template: str, messages: list[dict], system: str | N
     return text + match["suffix"]
 
 
+def from_path(gguf: Path, modelfile_dir: Path) -> str:
+    """The FROM path: relative to the Modelfile's folder (Ollama resolves it from there), so no machine path ends up
+    in a Modelfile that gets committed; absolute only when there is no relative path (another Windows drive)."""
+    gguf, modelfile_dir = gguf.resolve(), modelfile_dir.resolve()
+    try:
+        relative = Path(os.path.relpath(gguf, modelfile_dir)).as_posix()
+    except ValueError:
+        return str(gguf)
+    return relative if relative.startswith("../") else f"./{relative}"
+
+
 def write_modelfile(chat: dict, gguf: Path, out: Path, temperature: float | None = 0.0) -> Path:
-    out.write_bytes(render_modelfile(str(gguf), chat, temperature).encode("utf-8"))  # bytes: no CRLF on Windows
+    text = render_modelfile(from_path(gguf, out.parent), chat, temperature)
+    out.write_bytes(text.encode("utf-8"))  # bytes: no CRLF on Windows
     return out
 
 
@@ -102,7 +115,7 @@ def main() -> int:
     if gguf is None:
         print("no --gguf given and run.json records none", file=sys.stderr)
         return 2
-    out = write_modelfile(run["chat"], gguf.resolve(), args.out or args.run / "Modelfile", args.temperature)
+    out = write_modelfile(run["chat"], gguf, args.out or args.run / "Modelfile", args.temperature)
     print(out.read_text(encoding="utf-8"))
     for warning in warnings(run["chat"]):
         print(f"WARNING {warning}", file=sys.stderr)

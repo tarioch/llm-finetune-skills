@@ -28,7 +28,8 @@ ollama create <name>:<tag> -f outputs/<run>/Modelfile
 ```
 
 The Modelfile is generated from `run.json`, never write one by hand: a template or system message that differs
-from training changes the answers without any error (`references/modelfile.md`). Pass on the warnings it prints,
+from training changes the answers without any error (`references/modelfile.md`). Its `FROM` is relative to the
+Modelfile, so it can be committed without a machine path. Pass on the warnings it prints,
 in particular that the app has to strip an empty `<think></think>` block. Try one question with
 `ollama run <name>:<tag> "<question>"` to see that the answer has the trained shape.
 
@@ -40,7 +41,8 @@ python scripts/evaluate.py --eval eval.jsonl --model <name>:<new> --model <name>
 
 Use a domain check (`--check checks.py:function`) when exact match is too strict, e.g. execute a generated query
 and compare the results. Show the user the scores and a few examples where the models disagree, and let them decide
-what ships. With several base models, this is where the size/quality trade-off gets decided.
+what ships. With several base models, this is where the size/quality trade-off gets decided. The last model stays
+loaded in Ollama for a few minutes: `ollama stop <model>` before training again, so its GPU memory is free.
 
 ### 3. Publish (only after the user says so)
 
