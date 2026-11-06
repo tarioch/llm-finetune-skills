@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f8a7a"/>
+      <stop offset="1" stop-color="#27386b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <g stroke-linecap="round">
+    <!-- three slider tracks -->
+    <line x1="232" y1="352" x2="792" y2="352" stroke="#ffffff" stroke-opacity="0.35" stroke-width="44"/>
+    <line x1="232" y1="512" x2="792" y2="512" stroke="#ffffff" stroke-opacity="0.35" stroke-width="44"/>
+    <line x1="232" y1="672" x2="792" y2="672" stroke="#ffffff" stroke-opacity="0.35" stroke-width="44"/>
+    <!-- filled part up to each knob -->
+    <line x1="232" y1="352" x2="600" y2="352" stroke="#ffffff" stroke-width="44"/>
+    <line x1="232" y1="512" x2="392" y2="512" stroke="#ffffff" stroke-width="44"/>
+    <line x1="232" y1="672" x2="688" y2="672" stroke="#ffffff" stroke-width="44"/>
+  </g>
+  <!-- knobs -->
+  <circle cx="600" cy="352" r="72" fill="#ffffff"/>
+  <circle cx="392" cy="512" r="72" fill="#ffffff"/>
+  <circle cx="688" cy="672" r="72" fill="#ffffff"/>
+  <circle cx="600" cy="352" r="30" fill="#1f8a7a"/>
+  <circle cx="392" cy="512" r="30" fill="#236178"/>
+  <circle cx="688" cy="672" r="30" fill="#27386b"/>
+</svg>
