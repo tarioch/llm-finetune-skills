@@ -26,7 +26,8 @@ uv run pre-commit run --all-files   # ruff, ruff format, uv-lock, zizmor, whites
 uv run pytest
 ```
 
-CI runs the same, plus a check of the plugin manifests and the SKILL.md frontmatter.
+CI runs the same, plus `claude plugin validate .` (Claude Code's own check of the manifests and skills) and a check of
+the SKILL.md frontmatter.
 
 - `pre-commit run --all-files` only looks at files tracked by git, `git add` new files first.
 - Regenerate `uv.lock` with the uv version of the `uv-lock` pre-commit hook (`rev` in `.pre-commit-config.yaml`):

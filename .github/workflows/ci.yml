@@ -31,7 +31,11 @@ jobs:
       - name: Pre Commit
         run: uv run pre-commit run --all-files
 
-      - name: Validate the plugin
+      - name: Validate the plugin with Claude Code
+        # not --strict: it also fails on the repository's own CLAUDE.md at the plugin root and on the missing icon
+        run: npx --yes @anthropic-ai/claude-code@2.1.319 plugin validate .
+
+      - name: Check the skills' frontmatter
         run: |
           python3 - <<'PY'
           import json, pathlib, sys
