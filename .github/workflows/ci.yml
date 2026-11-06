@@ -1,0 +1,88 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: "3.14"
+
+      - name: Install
+        run: uv sync --locked --dev
+
+      - name: Pre Commit
+        run: uv run pre-commit run --all-files
+
+      - name: Validate the plugin
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, sys
+          plugin = json.loads(pathlib.Path(".claude-plugin/plugin.json").read_text())
+          market = json.loads(pathlib.Path(".claude-plugin/marketplace.json").read_text())
+          assert plugin["name"] in [p["name"] for p in market["plugins"]], "plugin missing from marketplace.json"
+          for skill in pathlib.Path("skills").iterdir():
+              text = (skill / "SKILL.md").read_text()
+              head = text.split("---")[1]
+              fields = dict(line.split(": ", 1) for line in head.strip().splitlines())
+              assert fields["name"] == skill.name, f"{skill}: name must match the folder"
+              assert 0 < len(fields["description"]) <= 1024, f"{skill}: description length"
+              print(f"{skill.name}: ok")
+          PY
+
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: "3.14"
+
+      - name: Install
+        run: uv sync --locked --dev
+
+      - name: Test
+        run: uv run pytest
+
+  # the one check to require on main, so changing the jobs needs no settings change
+  ci-ok:
+    name: CI ok
+    needs: [lint, test]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check that all jobs succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            if [ "$result" != success ]; then
+              echo "not all jobs succeeded: $RESULTS"
+              exit 1
+            fi
+          done

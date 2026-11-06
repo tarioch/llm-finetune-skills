@@ -1,0 +1,14 @@
+{
+  "name": "llm-finetune-skills",
+  "description": "Claude skills for fine-tuning open LLMs on your own GPU (Unsloth) and serving them with Ollama.",
+  "owner": {
+    "name": "Patrick Ruckstuhl"
+  },
+  "plugins": [
+    {
+      "name": "llm-finetune",
+      "source": "./",
+      "description": "Fine-tune LLMs with a LoRA on a local GPU (Unsloth) and serve them with Ollama."
+    }
+  ]
+}
