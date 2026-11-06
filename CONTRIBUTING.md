@@ -38,7 +38,8 @@ CI runs the same, plus a check of the plugin manifests and the SKILL.md frontmat
   skill's. Script names are unique across skills, as each skill's tests put its `scripts/` on the import path.
 - Skills hand work over through files, documented in both skills (`references/run-json.md` in `unsloth-lora` and
   `ollama-model`, kept identical by a test). A change to such a file format needs both sides and the handoff test.
-- `unsloth-lora`: `check_data.py` and `chat_format.py` use the standard library only. `preflight.py`, `train.py` and
+- `unsloth-lora`: `check_data.py`, `chat_format.py`, `export_files.py` and `train_status.py` use the standard library
+  only. `preflight.py`, `train.py` and
   `export_gguf.py` run in the user's Unsloth environment: import `unsloth` before `transformers`/`trl`, and don't
   add dependencies it doesn't already have. `train.py` and `export_gguf.py` can't run in CI (no GPU): check a change
   to them with a smoke run (`train.py --max-steps 2`, then `export_gguf.py`) on a GPU machine and say in the pull

@@ -5,12 +5,14 @@ Expects ``train.jsonl`` and ``val.jsonl``, one conversation per line: ``{"messag
 ...]}`` with roles ``system`` (optional, first only), ``user`` and ``assistant``, ending with an assistant turn.
 
 Fails on structural errors and on validation or evaluation examples that are also in training (their loss or score
-then measures memorization), warns when only the question repeats with another answer. Prints what else matters for
+then measures memorization), warns when only the question repeats with another answer (``--strict`` makes that an
+error too). Prints what else matters for
 training: counts, how system messages are used, the longest examples in characters (``train.py`` reports the exact
 token counts).
 
     python check_data.py data/            # a folder with train.jsonl and val.jsonl
     python check_data.py --eval eval.jsonl data/   # also check an evaluation set for overlap with training
+    python check_data.py --strict data/   # a question in training with another answer is an error, not a warning
 
 Standard library only.
 """
@@ -83,6 +85,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("data", type=Path, help="folder with train.jsonl and val.jsonl")
     ap.add_argument("--eval", type=Path, help="an evaluation set (same format) to check for overlap with training")
+    ap.add_argument(
+        "--strict", action="store_true", help="fail when a val/eval question is in training with a different answer"
+    )
     args = ap.parse_args()
 
     sets: dict[str, list[list[dict]]] = {}
@@ -112,7 +117,7 @@ def main() -> int:
         if same:
             errors.append(f"{len(same)} {name} examples also are in training, e.g. {same[0][:100]!r}")
         if other:
-            warnings.append(
+            (errors if args.strict else warnings).append(
                 f"{len(other)} {name} questions are in training with a different answer (fine if the answer depends "
                 f"on context the question doesn't show, otherwise a leak or contradiction), e.g. {other[0][:100]!r}"
             )

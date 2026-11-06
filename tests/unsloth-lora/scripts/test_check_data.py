@@ -38,6 +38,13 @@ def test_same_question_other_answer_is_a_warning(tmp_path, monkeypatch, capsys):
     assert "WARNING 1 val questions are in training with a different answer" in capsys.readouterr().err
 
 
+def test_same_question_other_answer_fails_with_strict(tmp_path, monkeypatch, capsys):
+    write(tmp_path / "train.jsonl", [qa("one"), qa("two")])
+    write(tmp_path / "val.jsonl", [qa("one", "B")])
+    assert run(monkeypatch, "--strict", tmp_path) == 1
+    assert "ERROR 1 val questions are in training with a different answer" in capsys.readouterr().err
+
+
 def test_overlap_with_eval_set(tmp_path, monkeypatch, capsys):
     write(tmp_path / "train.jsonl", [qa("one")])
     write(tmp_path / "val.jsonl", [qa("two")])
