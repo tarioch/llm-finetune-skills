@@ -22,6 +22,13 @@ def test_compares_models():
     assert "good: 2/2 right" in text and "bad: 1/2 right" in text and "disagree: [1]" in text
 
 
+def test_empty_think_block_is_removed():
+    [result, _] = evaluate.evaluate(
+        EXAMPLES, ["m"], lambda model, messages: "<think>\n\n</think>\n\nSELECT 1", evaluate.normalized_equal
+    )
+    assert result["ok"] and result["answer"] == "SELECT 1"
+
+
 def test_errors_count_as_wrong():
     def ask(model, messages):
         raise TimeoutError("slow")

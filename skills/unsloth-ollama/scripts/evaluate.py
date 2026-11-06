@@ -9,7 +9,9 @@ the expectation are equal after whitespace normalization; ``--check file.py:func
     python evaluate.py --eval eval.jsonl --model my-model:3b --model my-model:7b --model my-model:previous
     python evaluate.py --eval eval.jsonl --model my-model:3b --check checks.py:same_rows --out results.jsonl
 
-Uses Ollama's native ``/api/chat`` with temperature 0 sent in every request. Standard library only.
+Uses Ollama's native ``/api/chat`` with temperature 0 sent in every request. An empty ``<think></think>`` block at
+the start of an answer (models fine-tuned from a thinking template learn to write one) is removed before the check.
+Standard library only.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -24,6 +27,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 Check = Callable[[list[dict], str, str], bool]
+EMPTY_THINK = re.compile(r"^\s*<think>\s*</think>\s*")
 
 
 def normalized_equal(prompt: list[dict], expected: str, answer: str) -> bool:
@@ -60,7 +64,7 @@ def evaluate(
         for model in models:
             start = time.monotonic()
             try:
-                answer, error = ask(model, prompt), None
+                answer, error = EMPTY_THINK.sub("", ask(model, prompt)), None
                 ok = bool(check(prompt, expected, answer))
             except Exception as e:  # noqa: BLE001 - one failing example must not end the comparison
                 answer, error, ok = "", f"{type(e).__name__}: {e}", False

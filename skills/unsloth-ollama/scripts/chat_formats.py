@@ -20,6 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 SENTINEL = "SENTINEL-QUESTION-7f3a"
+SYSTEM_SENTINEL = "SENTINEL-SYSTEM-7f3a"
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ CHATML = ChatFormat(
     stop=("<|im_end|>",),
 )
 
-# Qwen2.5 (all sizes) uses ChatML. Add other families after checking them against the real template.
+# ChatML: Qwen2.5, Qwen3, Qwen3.5, SmolLM3 and others, see tests/test_chat_formats.py for the templates checked.
 FORMATS = {f.name: f for f in (CHATML,)}
 
 
@@ -60,19 +61,29 @@ def detect(rendered: str) -> ChatFormat:
     )
 
 
-def default_system(fmt: ChatFormat, render: Callable[[list[dict]], str]) -> str | None:
-    """The system message the chat template inserts into a conversation that has none, or None.
+Render = Callable[[list[dict]], str]
 
-    ``render`` renders a list of messages to text with the model's chat template (``tokenizer.apply_chat_template``
-    with ``tokenize=False``).
+
+def system_turn(fmt: ChatFormat, render: Render, system: str | None = None) -> str | None:
+    """The system turn's text as the chat template writes it, or None when it writes none.
+
+    ``render`` renders messages with the model's chat template (``tokenizer.apply_chat_template`` with
+    ``tokenize=False``). With ``system=None`` this is the default the template inserts on its own (Qwen2.5 has one,
+    Qwen3 has none). Some templates also rewrite a given system message, e.g. SmolLM3 wraps it into a larger block.
     """
-    text = render([{"role": "user", "content": SENTINEL}])
+    messages = [{"role": "system", "content": system}] if system is not None else []
+    text = render([*messages, {"role": "user", "content": SENTINEL}])
     head = text[: text.index(SENTINEL)]
     start = head.find(fmt.system_part)
     if start < 0:
         return None
     start += len(fmt.system_part)
     return head[start : head.index(fmt.end_of_turn, start)]
+
+
+def default_system(fmt: ChatFormat, render: Render) -> str | None:
+    """The system message the chat template inserts into a conversation that has none, or None."""
+    return system_turn(fmt, render)
 
 
 def data_system(conversations: list[list[dict]]) -> tuple[str, str | None]:
@@ -85,17 +96,21 @@ def data_system(conversations: list[list[dict]]) -> tuple[str, str | None]:
     return "mixed", None
 
 
-def modelfile_system(fmt_default: str | None, usage: str, text: str | None) -> str | None:
+def modelfile_system(fmt: ChatFormat, render: Render, usage: str, text: str | None) -> str | None:
     """The SYSTEM line the Modelfile needs so that Ollama sends what training saw.
 
-    The Ollama template reads only ``.Messages`` and has no fallback of its own, so a default the chat template
-    inserted during training has to be baked in explicitly.
+    The Ollama template reads only ``.Messages`` and writes the system message as it is, so it has to be the system
+    turn exactly as the chat template wrote it in training: its default when the data has none, or the data's own
+    message after any rewriting the template does.
     """
-    if usage == "same":
-        return text
-    if usage == "none":
-        return fmt_default
-    return None  # mixed: every caller has to send its own system message
+    if usage == "mixed":
+        return None  # every caller has to send its own system message
+    return system_turn(fmt, render, text if usage == "same" else None)
+
+
+def rewrites_system(fmt: ChatFormat, render: Render) -> bool:
+    """Whether the template changes a given system message (then a caller's own one won't match training)."""
+    return system_turn(fmt, render, SYSTEM_SENTINEL) != SYSTEM_SENTINEL
 
 
 def render_modelfile(gguf: str, fmt: ChatFormat, system: str | None, temperature: float | None = 0.0) -> str:

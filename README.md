@@ -26,8 +26,10 @@ Producing the training data is specific to each problem and stays in your own pr
    own check function.
 6. **Publishing**: tags, `ollama push`, release notes from `run.json`.
 
-Supported chat formats: ChatML (Qwen2.5, all sizes). Adding one is described in
-[references/chat-formats.md](skills/unsloth-ollama/references/chat-formats.md).
+Supported chat format: ChatML, the `<|im_start|>`/`<|im_end|>` format of Qwen2.5, Qwen3, Qwen3.5, SmolLM3 and many
+others. The tests check the generated Modelfile against the real templates in
+[tests/fixtures](tests/fixtures/README.md); other formats (Llama 3, Gemma, Mistral, ...) need an entry in
+`chat_formats.py`, see [references/chat-formats.md](skills/unsloth-ollama/references/chat-formats.md).
 
 ## Install
 
@@ -50,5 +52,5 @@ claude.ai, zip the `skills/unsloth-ollama` folder and upload it under Settings, 
 
 ## License
 
-[MIT](LICENSE). `tests/fixtures/qwen2.5.jinja` is Qwen2.5's chat template, from the Qwen2.5 model repositories
-(Apache 2.0), used to test that the generated Modelfile matches it.
+[MIT](LICENSE). The chat templates in `tests/fixtures/` belong to their models (Apache 2.0), see
+[their README](tests/fixtures/README.md).

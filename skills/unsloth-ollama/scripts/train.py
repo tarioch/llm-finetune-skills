@@ -30,7 +30,14 @@ from unsloth.chat_templates import train_on_responses_only  # noqa: E402
 # isort: split
 
 import torch  # noqa: E402
-from chat_formats import FORMATS, data_system, default_system, detect, modelfile_system  # noqa: E402
+from chat_formats import (  # noqa: E402
+    FORMATS,
+    data_system,
+    default_system,
+    detect,
+    modelfile_system,
+    rewrites_system,
+)
 from datasets import Dataset  # noqa: E402
 from trl import SFTConfig, SFTTrainer  # noqa: E402
 
@@ -93,16 +100,36 @@ def main() -> int:
     fmt = FORMATS[args.format] if args.format else detect(train_text[0])
     template_default = default_system(fmt, render)
     usage, data_text = data_system(train_msgs)
-    system = modelfile_system(template_default, usage, data_text)
+    system = modelfile_system(fmt, render, usage, data_text)
 
     print("\n=== first training example, exactly as the model will see it ===")
     print(train_text[0])
     print("=== end of example ===\n")
     print(f"chat format {fmt.name}; system messages in the data: {usage}; template default: {template_default!r}")
+    print(f"Modelfile SYSTEM: {system!r}")
     if usage == "mixed":
         print(
             "WARNING: the examples use different system messages, the Modelfile gets no SYSTEM line and every "
             "caller has to send the right one",
+            file=sys.stderr,
+        )
+        if rewrites_system(fmt, render):
+            print(
+                "WARNING: this chat template rewrites system messages, so a caller's own system message will not "
+                "look like training. Use one shared system message or none.",
+                file=sys.stderr,
+            )
+    answer_start = train_text[0].rfind(fmt.response_part) + len(fmt.response_part)
+    if train_text[0].startswith("<think>", answer_start):
+        print(
+            "WARNING: the chat template puts an empty <think></think> block in front of the answer, the model will "
+            "learn to start its answers with it and the app using the model has to strip it",
+            file=sys.stderr,
+        )
+    if system is not None and system != system.strip():
+        print(
+            "WARNING: the Modelfile SYSTEM starts or ends with whitespace, check that Ollama keeps it "
+            "(compare a request's prompt with the first example above)",
             file=sys.stderr,
         )
 

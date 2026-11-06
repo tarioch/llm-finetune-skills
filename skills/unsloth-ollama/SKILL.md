@@ -60,7 +60,9 @@ Read the output, don't just check the exit code:
 - the first example as rendered: the system line at the top is what the model will learn to expect,
 - `chat format ...; system messages in the data: ...; template default: ...`,
 - the tokens that receive loss: only the answer, not the question,
-- token lengths: a truncation warning means raising `--max-seq-length` or dropping examples.
+- token lengths: a truncation warning means raising `--max-seq-length` or dropping examples,
+- the `Modelfile SYSTEM` line and any warnings about it, and the empty `<think></think>` warning of thinking
+  templates (Qwen3, Qwen3.5): tell the user that the app will have to strip that block from answers.
 
 ### 4. Full run
 

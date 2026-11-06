@@ -11,12 +11,15 @@ the answers just get worse. `scripts/chat_formats.py` holds what has to agree fo
 | the system message the data has, or the template's default when it has none | `SYSTEM` |
 | the end-of-turn token | `PARAMETER stop` |
 
-How the Modelfile's `SYSTEM` is chosen (`chat_formats.modelfile_system`):
+How the Modelfile's `SYSTEM` is chosen (`chat_formats.modelfile_system`): it is the system turn exactly as the chat
+template wrote it in training, because the Ollama template writes the system message unchanged.
 
 - **No system messages in the data**: many chat templates (Qwen2.5 among them) insert a default system message on
-  their own, so the model was trained with it. The Modelfile bakes that same text in as `SYSTEM`.
-- **One shared system message**: the Modelfile bakes that one in.
-- **Mixed**: no `SYSTEM`, every caller has to send the right system message itself. `train.py` warns.
+  their own, so the model was trained with it. The Modelfile bakes that same text in. Others (Qwen3) insert none.
+- **One shared system message**: the Modelfile bakes it in as the template wrote it. Some templates rewrite it,
+  SmolLM3 for example wraps it into a metadata block, and the Modelfile then holds the whole block.
+- **Mixed**: no `SYSTEM`, every caller has to send the right system message itself. `train.py` warns, and warns
+  again when the template rewrites system messages, because then a caller's message can't match training.
 
 ## Pitfalls, each one seen in practice
 
@@ -33,14 +36,18 @@ How the Modelfile's `SYSTEM` is chosen (`chat_formats.modelfile_system`):
 
 ## Adding a family
 
-Only ChatML (Qwen2.5, all sizes) is included so far: it is the one checked against the real template and a trained
-model.
+Only ChatML is included so far. The tests check it against the real templates of Qwen2.5, Qwen3, Qwen3.5 and SmolLM3
+(`tests/fixtures/`), a trained model has been checked for Qwen2.5. A new ChatML model needs only its template added
+to the fixtures. Thinking models (Qwen3, Qwen3.5) render an empty `<think>\n\n</think>\n\n` in front of the last answer of
+every training conversation, so the fine-tuned model learns to start its answers with it. The prompt still matches,
+but the empty block comes back as part of the answer: `evaluate.py` strips it, and the app using the model has to
+strip it too (`train.py` warns when it sees one in the first example).
 
 1. Render a conversation with the model's real tokenizer:
    `tokenizer.apply_chat_template([{"role": "user", "content": "Q"}, {"role": "assistant", "content": "A"}],
    tokenize=False)`, and one with a system message.
 2. Add a `ChatFormat` to `FORMATS` with the user, assistant and system markers, the end-of-turn token, an Ollama
    template that produces the same text from `.Messages`, and the stop strings.
-3. Add the rendered strings to `tests/test_chat_formats.py` as fixtures and check that `render_like_ollama`
-   produces exactly the training text, with and without a system message.
+3. Add the model's template to `tests/fixtures/` and to `TEMPLATES` in `tests/test_chat_formats.py`, which checks
+   that the Ollama prompt is exactly the training text, with and without a system message and over two turns.
 4. Train a 2-step smoke run and check the "tokens that receive loss" output: only the answer.

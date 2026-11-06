@@ -1,35 +1,74 @@
+import datetime
+import json
+import re
 from pathlib import Path
 
 import jinja2
 import pytest
 from chat_formats import (
     CHATML,
+    SYSTEM_SENTINEL,
     data_system,
     default_system,
     detect,
     modelfile_system,
     render_like_ollama,
     render_modelfile,
+    rewrites_system,
+    system_turn,
 )
+from jinja2.ext import loopcontrols
+from jinja2.sandbox import ImmutableSandboxedEnvironment
 
+FIXTURES = Path(__file__).parent / "fixtures"
 QWEN_DEFAULT = "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."
-
-
-@pytest.fixture(scope="module")
-def qwen_render():
-    """Renders like tokenizer.apply_chat_template(messages, tokenize=False) with Qwen2.5's real chat template."""
-    source = (Path(__file__).parent / "fixtures" / "qwen2.5.jinja").read_text(encoding="utf-8")
-    template = jinja2.Environment(trim_blocks=True, lstrip_blocks=True).from_string(source)
-    return lambda messages, add_generation_prompt=False: template.render(
-        messages=messages, add_generation_prompt=add_generation_prompt, tools=None
-    )
-
-
 QA = [{"role": "user", "content": "How much?"}, {"role": "assistant", "content": "SELECT 1"}]
+SYSTEM_QA = [{"role": "system", "content": "Answer in BQL."}, *QA]
+TWO_TURNS = [*QA, {"role": "user", "content": "And in 2024?"}, {"role": "assistant", "content": "SELECT 2"}]
 
 
-def test_detect_chatml(qwen_render):
-    assert detect(qwen_render(QA)) is CHATML
+def load_template(name):
+    """A renderer like tokenizer.apply_chat_template(messages, tokenize=False), for a real chat template.
+
+    Uses the same Jinja setup as transformers: sandboxed, trim_blocks, lstrip_blocks, loop controls.
+    """
+    env = ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True, extensions=[loopcontrols])
+
+    def raise_exception(message):
+        raise jinja2.TemplateError(message)
+
+    env.globals["raise_exception"] = raise_exception
+    env.globals["strftime_now"] = lambda fmt: datetime.date(2026, 1, 1).strftime(fmt)
+    env.filters["tojson"] = lambda x, indent=None, ensure_ascii=False: json.dumps(
+        x, indent=indent, ensure_ascii=ensure_ascii
+    )
+    template = env.from_string((FIXTURES / name).read_text(encoding="utf-8"))
+
+    def render(messages, add_generation_prompt=False):
+        return template.render(
+            messages=messages, add_generation_prompt=add_generation_prompt, tools=None, bos_token="", eos_token=""
+        )
+
+    return render
+
+
+# real chat templates (see fixtures/README.md) and the default system message each one inserts
+TEMPLATES = {
+    "Qwen2.5-Coder-Instruct.jinja": QWEN_DEFAULT,
+    "Qwen3.jinja": None,
+    "Qwen3.5.jinja": None,
+    "SmolLM3.jinja": "## Metadata\n\nKnowledge Cutoff Date: June 2025\nReasoning Mode: /think\n\n",
+}
+
+
+@pytest.fixture(params=sorted(TEMPLATES), scope="module")
+def template(request):
+    return request.param, load_template(request.param)
+
+
+def test_detect_chatml(template):
+    _, render = template
+    assert detect(render(QA)) is CHATML
 
 
 def test_detect_unknown():
@@ -37,34 +76,55 @@ def test_detect_unknown():
         detect("[INST] hi [/INST]")
 
 
-def test_qwen_default_system(qwen_render):
-    assert default_system(CHATML, qwen_render) == QWEN_DEFAULT
+def test_default_system(template):
+    name, render = template
+    expected = TEMPLATES[name]
+    found = default_system(CHATML, render)
+    if expected is None:
+        assert found is None
+    else:
+        assert found.startswith(expected)
 
 
-def test_no_default_system():
-    assert default_system(CHATML, lambda m: f"<|im_start|>user\n{m[0]['content']}<|im_end|>\n") is None
+def test_no_system_turn():
+    assert system_turn(CHATML, lambda m: f"<|im_start|>user\n{m[-1]['content']}<|im_end|>\n") is None
+
+
+def test_rewrites_system():
+    assert not rewrites_system(CHATML, load_template("Qwen2.5-Coder-Instruct.jinja"))
+    assert rewrites_system(CHATML, load_template("SmolLM3.jinja"))  # wraps it into its metadata block
+    assert SYSTEM_SENTINEL in system_turn(CHATML, load_template("SmolLM3.jinja"), SYSTEM_SENTINEL)
 
 
 @pytest.mark.parametrize(
     "conversations, expected",
     [
         ([QA, QA], ("none", None)),
-        ([[{"role": "system", "content": "S"}, *QA]] * 2, ("same", "S")),
-        ([[{"role": "system", "content": "S"}, *QA], QA], ("mixed", None)),
+        ([SYSTEM_QA] * 2, ("same", "Answer in BQL.")),
+        ([SYSTEM_QA, QA], ("mixed", None)),
     ],
 )
 def test_data_system(conversations, expected):
     assert data_system(conversations) == expected
 
 
-@pytest.mark.parametrize("data_messages", [QA, [{"role": "system", "content": "Answer in BQL."}, *QA]])
-def test_ollama_prompt_matches_training(qwen_render, data_messages):
-    """The prompt Ollama builds from the Modelfile is exactly the text training saw before the answer."""
-    usage, text = data_system([data_messages])
-    system = modelfile_system(default_system(CHATML, qwen_render), usage, text)
-    request = [m for m in data_messages[:-1] if m["role"] != "system"]  # a client sends only the question
-    trained = qwen_render(data_messages[:-1], add_generation_prompt=True)
-    assert render_like_ollama(CHATML, request, system) == trained
+@pytest.mark.parametrize("conversation", [QA, SYSTEM_QA, TWO_TURNS], ids=["plain", "system", "two-turns"])
+def test_ollama_prompt_matches_training(template, conversation):
+    """Ollama's prompt for a request is exactly the training text up to where the trained answer starts.
+
+    The client sends the conversation without the answer and without the system message, which the Modelfile's
+    SYSTEM provides. Thinking templates (Qwen3, Qwen3.5) put an empty think block in front of the last answer: it
+    belongs to what the model learns to write, not to the prompt.
+    """
+    _, render = template
+    usage, text = data_system([conversation])
+    system = modelfile_system(CHATML, render, usage, text)
+    request = [m for m in conversation[:-1] if m["role"] != "system"]
+    prompt = render_like_ollama(CHATML, request, system)
+    trained = render(conversation)
+    assert trained.startswith(prompt)
+    answer = re.sub(r"^<think>\s*</think>\s*", "", trained[len(prompt) :])  # an empty thinking block is trained
+    assert answer.startswith(conversation[-1]["content"])
 
 
 def test_render_modelfile():
