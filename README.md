@@ -38,8 +38,8 @@ Other formats (Llama 3, Gemma, Mistral, ...) need an entry in `chat_format.py`, 
 1. **Modelfile** (`modelfile.py`): template, system message and stop strings built from `run.json`, so Ollama sends
    the model exactly the prompt layout it was trained on.
 2. **Evaluation** (`evaluate.py`): several Ollama models side by side on a held-out set, with exact match or your
-   own check function.
-3. **Publishing**: tags, `ollama push`, release notes from `run.json`.
+   own check function, reporting score, speed, size and a paired comparison as Markdown.
+3. **Publishing**: tags, `ollama push`, release notes from `run.json` and the evaluation (`release_notes.py`).
 
 ## Install
 
