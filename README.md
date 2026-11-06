@@ -28,7 +28,7 @@ Producing the training data is specific to each problem and stays in your own pr
 
 Supported chat format: ChatML, the `<|im_start|>`/`<|im_end|>` format of Qwen2.5, Qwen3, Qwen3.5, SmolLM3 and many
 others. The tests check the generated Modelfile against the real templates in
-[tests/fixtures](tests/fixtures/README.md); other formats (Llama 3, Gemma, Mistral, ...) need an entry in
+[tests/unsloth-ollama/scripts/fixtures](tests/unsloth-ollama/scripts/fixtures/README.md); other formats (Llama 3, Gemma, Mistral, ...) need an entry in
 `chat_formats.py`, see [references/chat-formats.md](skills/unsloth-ollama/references/chat-formats.md).
 
 ## Install
@@ -52,5 +52,5 @@ claude.ai, zip the `skills/unsloth-ollama` folder and upload it under Settings, 
 
 ## License
 
-[MIT](LICENSE). The chat templates in `tests/fixtures/` belong to their models (Apache 2.0), see
-[their README](tests/fixtures/README.md).
+[MIT](LICENSE). The chat templates in `tests/unsloth-ollama/scripts/fixtures/` belong to their models (Apache 2.0), see
+[their README](tests/unsloth-ollama/scripts/fixtures/README.md).

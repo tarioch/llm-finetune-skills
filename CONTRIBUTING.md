@@ -12,7 +12,7 @@ path, the project environment exists for the tests and the checks.
 | `skills/unsloth-ollama/scripts/` | the scripts the skill runs, see the docstring of each |
 | `skills/unsloth-ollama/references/` | details SKILL.md points to, read only when needed |
 | `.claude-plugin/` | `plugin.json` (the plugin) and `marketplace.json` (so the repo can be added as a marketplace) |
-| `tests/` | tests for the scripts that run without a GPU, `fixtures/` holds real chat templates |
+| `tests/<skill>/` | tests for a skill, mirroring `skills/<skill>/` (`tests/unsloth-ollama/scripts/test_check_data.py` tests `skills/unsloth-ollama/scripts/check_data.py`); its `conftest.py` puts the skill's `scripts/` on the import path |
 
 ## Setup and checks
 
@@ -35,6 +35,8 @@ CI runs the same, plus a check of the plugin manifests and the SKILL.md frontmat
   `unsloth` before `transformers`/`trl`, and don't add dependencies it doesn't already have.
 - `train.py` and `export_gguf.py` can't run in CI (no GPU). A change to them is checked with a smoke run
   (`train.py --max-steps 2`, then `export_gguf.py`) on a GPU machine, say in the pull request what was run.
+- Tests for the scripts that don't need a GPU are required. Fixtures live next to the tests that use them
+  (`tests/unsloth-ollama/scripts/fixtures/` holds real chat templates).
 - A new chat format needs a test against the family's real chat template, see
   `skills/unsloth-ollama/references/chat-formats.md`.
 

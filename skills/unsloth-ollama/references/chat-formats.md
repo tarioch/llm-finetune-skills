@@ -37,7 +37,7 @@ template wrote it in training, because the Ollama template writes the system mes
 ## Adding a family
 
 Only ChatML is included so far. The tests check it against the real templates of Qwen2.5, Qwen3, Qwen3.5 and SmolLM3
-(`tests/fixtures/`), a trained model has been checked for Qwen2.5. A new ChatML model needs only its template added
+(`tests/unsloth-ollama/scripts/fixtures/`), a trained model has been checked for Qwen2.5. A new ChatML model needs only its template added
 to the fixtures. Thinking models (Qwen3, Qwen3.5) render an empty `<think>\n\n</think>\n\n` in front of the last answer of
 every training conversation, so the fine-tuned model learns to start its answers with it. The prompt still matches,
 but the empty block comes back as part of the answer: `evaluate.py` strips it, and the app using the model has to
@@ -48,6 +48,7 @@ strip it too (`train.py` warns when it sees one in the first example).
    tokenize=False)`, and one with a system message.
 2. Add a `ChatFormat` to `FORMATS` with the user, assistant and system markers, the end-of-turn token, an Ollama
    template that produces the same text from `.Messages`, and the stop strings.
-3. Add the model's template to `tests/fixtures/` and to `TEMPLATES` in `tests/test_chat_formats.py`, which checks
+3. Add the model's template to `tests/unsloth-ollama/scripts/fixtures/` and to `TEMPLATES` in
+   `tests/unsloth-ollama/scripts/test_chat_formats.py`, which checks
    that the Ollama prompt is exactly the training text, with and without a system message and over two turns.
 4. Train a 2-step smoke run and check the "tokens that receive loss" output: only the answer.

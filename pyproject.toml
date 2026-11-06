@@ -19,6 +19,8 @@ package = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# tests/<skill>/ mirrors skills/<skill>/, so test files of different skills may share a name
+addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
 line-length = 120

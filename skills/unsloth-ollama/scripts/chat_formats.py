@@ -46,7 +46,8 @@ CHATML = ChatFormat(
     stop=("<|im_end|>",),
 )
 
-# ChatML: Qwen2.5, Qwen3, Qwen3.5, SmolLM3 and others, see tests/test_chat_formats.py for the templates checked.
+# ChatML: Qwen2.5, Qwen3, Qwen3.5, SmolLM3 and others. The templates checked are in the repository's
+# tests/unsloth-ollama/scripts/test_chat_formats.py.
 FORMATS = {f.name: f for f in (CHATML,)}
 
 
