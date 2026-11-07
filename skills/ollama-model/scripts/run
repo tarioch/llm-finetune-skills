@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Run one of this skill's scripts: run [--uv <project>] <script.py> [args...]
+#
+# One fixed entry point, so the skill can allow it in its allowed-tools and Claude Code's auto mode runs the scripts
+# without refusing them. The scripts need only the standard library and run with any Python 3. --uv <project> runs it
+# with `uv run --project <project> python` instead: for an evaluate.py --check function that imports the project's
+# own code or dependencies.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+project=""
+if [ "${1:-}" = "--uv" ]; then
+    project="${2:-}"
+    if [ -z "$project" ]; then
+        echo "run: --uv needs the project folder" >&2
+        exit 2
+    fi
+    shift 2
+fi
+script="${1:-}"
+if [ -z "$script" ]; then
+    echo "usage: run [--uv <project>] <script.py> [args...]" >&2
+    exit 2
+fi
+shift
+case "$script" in
+    */* | *\\*) echo "run: give the name of a script in $here, not a path" >&2; exit 2 ;;
+esac
+if [ ! -f "$here/$script" ]; then
+    echo "run: there is no $script in $here" >&2
+    exit 2
+fi
+
+if [ -n "$project" ]; then
+    exec uv run --project "$project" python "$here/$script" "$@"
+fi
+for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null && "$candidate" -c "" 2>/dev/null; then
+        exec "$candidate" "$here/$script" "$@"
+    fi
+done
+echo "run: no Python 3 found (python3 or python)" >&2
+exit 2

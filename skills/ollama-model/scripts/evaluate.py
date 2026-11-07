@@ -78,14 +78,26 @@ def ollama_sizes(host: str, timeout: float) -> dict[str, int]:
 Answer = str | dict
 
 
+def checked(check: Check, prompt: list[dict], expected: str, answer: str) -> bool:
+    """Run the check, then put back ``sys.stdout`` and ``sys.stderr`` if it replaced them.
+
+    Libraries a check uses can wrap the streams on every call: TatSu (beanquery's parser) calls ``colorama.init()``
+    on every parse, which on Windows wraps ``sys.stdout`` once more each time. After a few hundred answers, printing
+    the summary recursed through all the wrappers and the run died with a RecursionError, the summary unprinted.
+    """
+    streams = sys.stdout, sys.stderr
+    try:
+        return bool(check(prompt, expected, answer))
+    finally:
+        sys.stdout, sys.stderr = streams
+
+
 def evaluate(
     examples: list[list[dict]], models: list[str], ask: Callable[[str, list[dict]], Answer], check: Check
 ) -> list[dict]:
-    """Ask every model every example; ``ask`` returns the answer text, or a dict like :func:`ollama_chat`'s.
+    """Asks one model all examples before the next model: Ollama keeps one model loaded instead of swapping per answer.
 
-    One model after the other, so Ollama loads each model once instead of switching for every example when the GPU
-    holds only one. The results come back ordered by example, then model.
-    """
+    The results are ordered by example, then model, as given."""
     results = []
     for model in models:
         for i, conversation in enumerate(examples):
@@ -97,7 +109,7 @@ def evaluate(
                 if isinstance(reply, dict):
                     reply, tokens, token_seconds = reply["content"], reply.get("tokens"), reply.get("token_seconds")
                 answer, error = EMPTY_THINK.sub("", reply), None
-                ok = bool(check(prompt, expected, answer))
+                ok = checked(check, prompt, expected, answer)
             except Exception as e:  # noqa: BLE001 - one failing example must not end the comparison
                 answer, error, ok = "", f"{type(e).__name__}: {e}", False
             results.append(

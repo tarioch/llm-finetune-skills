@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Run one of this skill's scripts: run <script.py> [args...]
+#
+# One fixed entry point, so the skill can allow it in its allowed-tools and Claude Code's auto mode runs the scripts
+# without refusing them. check_data.py, chat_format.py and train_status.py run with any Python 3. preflight.py,
+# train.py and export_gguf.py run with the Unsloth environment's Python, taken from $UNSLOTH_PYTHON or else from the
+# first line of ~/.config/llm-finetune/unsloth-python, and from the parent folder of their --out/--run folder
+# (created if missing): Unsloth writes unsloth_compiled_cache/ into the current directory.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+script="${1:-}"
+if [ -z "$script" ]; then
+    echo "usage: run <script.py> [args...]" >&2
+    exit 2
+fi
+shift
+case "$script" in
+    */* | *\\*) echo "run: give the name of a script in $here, not a path" >&2; exit 2 ;;
+esac
+if [ ! -f "$here/$script" ]; then
+    echo "run: there is no $script in $here" >&2
+    exit 2
+fi
+
+case "$script" in
+    check_data.py | chat_format.py | train_status.py)
+        python=""
+        for candidate in python3 python; do
+            if command -v "$candidate" >/dev/null && "$candidate" -c "" 2>/dev/null; then
+                python="$candidate"
+                break
+            fi
+        done
+        if [ -z "$python" ]; then
+            echo "run: no Python 3 found (python3 or python)" >&2
+            exit 2
+        fi
+        ;;
+    *)
+        config="${XDG_CONFIG_HOME:-$HOME/.config}/llm-finetune/unsloth-python"
+        python="${UNSLOTH_PYTHON:-}"
+        if [ -z "$python" ] && [ -f "$config" ]; then
+            python="$(head -n 1 "$config" | tr -d '\r')"
+        fi
+        if [ -z "$python" ]; then
+            echo "run: set UNSLOTH_PYTHON, or write the path of the Unsloth environment's Python to $config" >&2
+            exit 2
+        fi
+        # the run folder decides the working directory
+        folder=""
+        previous=""
+        for arg in "$@"; do
+            case "$arg" in
+                --out=* | --run=*) folder="${arg#*=}" ;;
+            esac
+            case "$previous" in
+                --out | --run) folder="$arg" ;;
+            esac
+            previous="$arg"
+        done
+        if [ -n "$folder" ]; then
+            # the working directory changes, so a relative path would point somewhere else
+            case "$folder" in
+                /* | [A-Za-z]:*) ;;
+                *) echo "run: --out/--run must be an absolute path, got $folder" >&2; exit 2 ;;
+            esac
+            mkdir -p "$(dirname "$folder")"
+            cd "$(dirname "$folder")"
+        fi
+        ;;
+esac
+
+exec "$python" "$here/$script" "$@"

@@ -4,8 +4,9 @@
 Expects ``train.jsonl`` and ``val.jsonl``, one conversation per line: ``{"messages": [{"role": ..., "content": ...},
 ...]}`` with roles ``system`` (optional, first only), ``user`` and ``assistant``, ending with an assistant turn.
 
-Fails on structural errors and on validation or evaluation examples that are also in training (their loss or score
-then measures memorization), warns when only the question repeats with another answer. Prints what else matters for
+Fails on structural errors and on validation or evaluation prompts that are also in training, with the same or a
+different answer: the model has seen that prompt, so its loss or score there measures recall, not generalization.
+The fix is to take them out of validation or evaluation, training keeps its data. Prints what else matters for
 training: counts, how system messages are used, the longest examples in characters (``train.py`` reports the exact
 token counts).
 
@@ -99,7 +100,6 @@ def main() -> int:
         if not sets[name] and not errs:
             errors.append(f"{path} is empty")
 
-    warnings: list[str] = []
     train_answers: dict[str, set[str]] = {}
     for c in sets.get("train", []):
         train_answers.setdefault(prompt_key(c), set()).add(c[-1]["content"].strip())
@@ -109,12 +109,11 @@ def main() -> int:
             answers = train_answers.get(prompt_key(c))
             if answers is not None:
                 (same if c[-1]["content"].strip() in answers else other).append(c[-2]["content"])
-        if same:
-            errors.append(f"{len(same)} {name} examples also are in training, e.g. {same[0][:100]!r}")
-        if other:
-            warnings.append(
-                f"{len(other)} {name} questions are in training with a different answer (fine if the answer depends "
-                f"on context the question doesn't show, otherwise a leak or contradiction), e.g. {other[0][:100]!r}"
+        if same or other:
+            example = (same or other)[0]
+            errors.append(
+                f"{len(same) + len(other)} {name} prompts are also in training ({len(same)} with the same answer, "
+                f"{len(other)} with a different one), take them out of {name}: e.g. {example[:100]!r}"
             )
 
     for name, conversations in sets.items():
@@ -126,8 +125,6 @@ def main() -> int:
     if "train" in sets and "val" in sets and data_system(sets["train"]) != data_system(sets["val"]):
         errors.append("train and val use system messages differently")
 
-    for w in warnings:
-        print(f"WARNING {w}", file=sys.stderr)
     for e in errors[:50]:
         print(f"ERROR {e}", file=sys.stderr)
     if len(errors) > 50:

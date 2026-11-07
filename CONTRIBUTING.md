@@ -11,7 +11,8 @@ path, the project environment exists for the tests and the checks.
 | `skills/<skill>/SKILL.md` | the workflow Claude follows, frontmatter `name` must match the folder |
 | `skills/<skill>/scripts/` | the scripts the skill runs, see the docstring of each |
 | `skills/<skill>/references/` | details SKILL.md points to, read only when needed |
-| `.claude-plugin/` | `plugin.json` (the plugin, all skills) and `marketplace.json` (so the repo can be added as a marketplace) |
+| `.claude-plugin/` | `plugin.json` (the plugin, all skills), `marketplace.json` (so the repo can be added as a marketplace), and `icon.png` (1024 px) rendered from `icon.svg` |
+| `.claude/CLAUDE.md` | instructions for Claude working on this repository: not at the root, where the plugin validator warns that it would look like context shipped with the plugin |
 | `tests/<skill>/` | tests for one skill, mirroring `skills/<skill>/` (`tests/unsloth-lora/scripts/test_check_data.py` tests `skills/unsloth-lora/scripts/check_data.py`); its `conftest.py` puts the skill's `scripts/` on the import path |
 | `tests/test_handoff.py` | tests across skills: what `unsloth-lora` records in `run.json` makes `ollama-model` build the prompt training saw |
 | `tests/fixtures/` | fixtures shared by several skills' tests, `chat-templates/` holds real chat templates |
@@ -26,7 +27,8 @@ uv run pre-commit run --all-files   # ruff, ruff format, uv-lock, zizmor, whites
 uv run pytest
 ```
 
-CI runs the same, plus a check of the plugin manifests and the SKILL.md frontmatter.
+CI runs the same, plus `claude plugin validate --strict .` (Claude Code's own check of the manifests and skills,
+warnings included) and a check of the SKILL.md frontmatter.
 
 - `pre-commit run --all-files` only looks at files tracked by git, `git add` new files first.
 - Regenerate `uv.lock` with the uv version of the `uv-lock` pre-commit hook (`rev` in `.pre-commit-config.yaml`):
@@ -38,7 +40,8 @@ CI runs the same, plus a check of the plugin manifests and the SKILL.md frontmat
   skill's. Script names are unique across skills, as each skill's tests put its `scripts/` on the import path.
 - Skills hand work over through files, documented in both skills (`references/run-json.md` in `unsloth-lora` and
   `ollama-model`, kept identical by a test). A change to such a file format needs both sides and the handoff test.
-- `unsloth-lora`: `check_data.py` and `chat_format.py` use the standard library only. `preflight.py`, `train.py` and
+- `unsloth-lora`: `check_data.py`, `chat_format.py`, `export_files.py` and `train_status.py` use the standard library
+  only. `preflight.py`, `train.py` and
   `export_gguf.py` run in the user's Unsloth environment: import `unsloth` before `transformers`/`trl`, and don't
   add dependencies it doesn't already have. `train.py` and `export_gguf.py` can't run in CI (no GPU): check a change
   to them with a smoke run (`train.py --max-steps 2`, then `export_gguf.py`) on a GPU machine and say in the pull
