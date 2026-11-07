@@ -24,7 +24,7 @@ share a working directory.
 - The dataset folder, and the evaluation set used later to compare models: it must not be part of training. If
   there is none, propose holding out examples before training.
 - The base model(s), as Unsloth 4-bit names (e.g. `unsloth/Qwen2.5-Coder-3B-Instruct-bnb-4bit`). Several base
-  models means one run folder each and the same steps for each.
+  models means one run folder each and the same steps for each, one after the other (`references/base-models.md`).
 - The machine: training needs a CUDA GPU and the Unsloth environment's Python. Ask the user for that Python's path
   if `UNSLOTH_PYTHON` isn't set and `~/.config/llm-finetune/unsloth-python` doesn't exist, and write the path as the
   first line of that file (with their OK): the launcher reads it from there.

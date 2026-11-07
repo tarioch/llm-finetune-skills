@@ -50,7 +50,7 @@ and compare the results. A check that imports the project's own code or dependen
 environment: with a uv project, `${CLAUDE_SKILL_DIR}/scripts/run --uv <project> evaluate.py ...`. The report gives
 per model the score, median time per answer, tokens per second and size, and for each model against the first how
 many examples only one of the two got right: on a small set that says more than the two scores. Show the user the
-table and a few examples where the models disagree, and let them decide what ships. With several base models, this
+table and a few examples where the models disagree, and let them decide what ships. With several base models, put all of them and the published baseline into this one call: this
 is where the size/quality trade-off gets decided. The last model stays
 loaded in Ollama for a few minutes: `ollama stop <model>` before training again, so its GPU memory is free.
 
