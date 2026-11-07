@@ -20,7 +20,7 @@ Producing the training data is specific to each problem and stays in your own pr
 
 ## unsloth-lora
 
-1. **Data check** (`check_data.py`): structure, alternating turns, examples shared between training and validation
+1. **Data check** (`check_data.py`): structure, alternating turns, prompts shared between training and validation
    or evaluation, how system messages are used.
 2. **Preflight** (`preflight.py`): free GPU memory (and who else uses it), the training environment, disk space.
 3. **Training** (`train.py`): QLoRA with loss on the answers only. Prints the first example as the model sees it,

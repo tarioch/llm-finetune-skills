@@ -28,21 +28,24 @@ def test_val_example_also_in_training(tmp_path, monkeypatch, capsys):
     write(tmp_path / "train.jsonl", [qa("one"), qa("two")])
     write(tmp_path / "val.jsonl", [qa(" one ", "A ")])
     assert run(monkeypatch, tmp_path) == 1
-    assert "1 val examples also are in training" in capsys.readouterr().err
+    assert (
+        "1 val prompts are also in training (1 with the same answer, 0 with a different one)" in capsys.readouterr().err
+    )
 
 
-def test_same_question_other_answer_is_a_warning(tmp_path, monkeypatch, capsys):
+def test_same_prompt_other_answer_is_an_error(tmp_path, monkeypatch, capsys):
     write(tmp_path / "train.jsonl", [qa("one"), qa("two")])
-    write(tmp_path / "val.jsonl", [qa("one", "B")])
+    write(tmp_path / "val.jsonl", [qa("one", "B"), qa("three")])
+    assert run(monkeypatch, tmp_path) == 1
+    err = capsys.readouterr().err
+    assert "ERROR 1 val prompts are also in training (0 with the same answer, 1 with a different one)" in err
+    assert "take them out of val" in err
+
+
+def test_repeats_within_training_are_fine(tmp_path, monkeypatch, capsys):
+    write(tmp_path / "train.jsonl", [qa("one", "A"), qa("one", "B")])
+    write(tmp_path / "val.jsonl", [qa("two")])
     assert run(monkeypatch, tmp_path) == 0
-    assert "WARNING 1 val questions are in training with a different answer" in capsys.readouterr().err
-
-
-def test_same_question_other_answer_fails_with_strict(tmp_path, monkeypatch, capsys):
-    write(tmp_path / "train.jsonl", [qa("one"), qa("two")])
-    write(tmp_path / "val.jsonl", [qa("one", "B")])
-    assert run(monkeypatch, "--strict", tmp_path) == 1
-    assert "ERROR 1 val questions are in training with a different answer" in capsys.readouterr().err
 
 
 def test_overlap_with_eval_set(tmp_path, monkeypatch, capsys):
@@ -50,7 +53,7 @@ def test_overlap_with_eval_set(tmp_path, monkeypatch, capsys):
     write(tmp_path / "val.jsonl", [qa("two")])
     write(tmp_path / "eval.jsonl", [qa("one")])
     assert run(monkeypatch, "--eval", tmp_path / "eval.jsonl", tmp_path) == 1
-    assert "1 eval examples" in capsys.readouterr().err
+    assert "1 eval prompts are also in training" in capsys.readouterr().err
 
 
 def test_system_usage_must_match(tmp_path, monkeypatch, capsys):
