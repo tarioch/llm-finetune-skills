@@ -104,5 +104,5 @@ def test_a_check_that_wraps_the_streams_cannot_break_printing(capsys):
     examples = EXAMPLES * (sys.getrecursionlimit() // 2)  # with the wrappers piled up, print() would recurse too deep
     results = evaluate.evaluate(examples, ["m"], lambda model, messages: "SELECT 1", wrapping_check)
     assert sys.stdout is stdout and sys.stderr is stderr
-    print(evaluate.summary(results, ["m"]))
+    sys.stdout.write(evaluate.summary(results, ["m"]) + "\n")
     assert f"m: {len(examples)}/{len(examples)} right" in capsys.readouterr().out
