@@ -81,5 +81,5 @@ def test_main_needs_a_chat_section(tmp_path, monkeypatch):
 
 
 def test_from_path_is_relative_to_the_modelfile(tmp_path):
-    assert modelfile.from_path(tmp_path / "run" / "gguf_gguf" / "m.gguf", tmp_path / "run") == "./gguf_gguf/m.gguf"
+    assert modelfile.from_path(tmp_path / "run" / "gguf" / "m.gguf", tmp_path / "run") == "./gguf/m.gguf"
     assert modelfile.from_path(tmp_path / "other" / "m.gguf", tmp_path / "run") == "../other/m.gguf"

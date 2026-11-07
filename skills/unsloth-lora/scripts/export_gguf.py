@@ -9,7 +9,7 @@ the GGUF (it uses the stock template, not the layout training used).
 
 Run it with the Python of the Unsloth environment:
 
-    python export_gguf.py --run outputs/my-3b                  # -> outputs/my-3b/gguf_gguf/*.gguf, recorded in run.json
+    python export_gguf.py --run outputs/my-3b                  # -> outputs/my-3b/gguf/*.gguf, recorded in run.json
     python export_gguf.py --run outputs/my-3b --quant q5_k_m
 """
 

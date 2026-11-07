@@ -1,9 +1,9 @@
 """The file handling around a GGUF export, kept out of ``export_gguf.py`` so it can be tested without a GPU.
 
 Unsloth's ``save_pretrained_gguf(out)`` writes the merged 16-bit model to ``out`` and, depending on the version,
-the GGUF to ``out`` or to ``out_gguf`` next to it, together with a Modelfile of its own. That Modelfile uses the base
-model's stock template, not the layout training used, so it is removed: ``ollama-model``'s ``modelfile.py`` writes
-the right one from ``run.json``.
+the GGUF to ``out`` or to ``out_gguf`` next to it, together with a Modelfile of its own. Once the merged model is
+removed, ``out_gguf`` is renamed to ``out``. That Modelfile uses the base model's stock template, not the layout
+training used, so it is removed: ``ollama-model``'s ``modelfile.py`` writes the right one from ``run.json``.
 
 Standard library only.
 """
@@ -44,6 +44,11 @@ def finish(run_dir: Path, out: Path, gguf: Path, quant: str, keep_merged: bool =
         size = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
         shutil.rmtree(out)
         notes.append(f"removed the merged 16-bit model in {out} ({size / 2**30:.1f} GiB), --keep-merged keeps it")
+    # Unsloth puts the GGUF in <out>_gguf next to the merged model; once that is gone, the GGUF takes <out>'s name
+    if not out.exists() and gguf.parent == out.with_name(out.name + "_gguf"):
+        gguf.parent.rename(out)
+        gguf = out / gguf.name
+        notes.append(f"moved the GGUF to {gguf}")
     path = gguf.relative_to(run_dir).as_posix() if gguf.is_relative_to(run_dir) else str(gguf)
     record = {"path": path, "quant": quant, "bytes": gguf.stat().st_size, "sha256": sha256(gguf)}
     return record, notes

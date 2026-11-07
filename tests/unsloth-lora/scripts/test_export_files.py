@@ -25,26 +25,29 @@ def test_finish_records_and_tidies_up(tmp_path):
     run, gguf = make_export(tmp_path)
     record, notes = export_files.finish(run, run / "gguf", gguf, "q4_k_m")
     assert record == {
-        "path": "gguf_gguf/m.Q4_K_M.gguf",
+        "path": "gguf/m.Q4_K_M.gguf",
         "quant": "q4_k_m",
         "bytes": 9,
         "sha256": hashlib.sha256(b"GGUF data").hexdigest(),
     }
-    assert not (run / "gguf").exists()  # merged weights gone
-    assert not (run / "gguf_gguf" / "Modelfile").exists()  # Unsloth's stock-template Modelfile gone
-    assert gguf.exists() and len(notes) == 2
+    assert not (run / "gguf" / "model.safetensors").exists()  # merged weights gone
+    assert not (run / "gguf_gguf").exists()  # the GGUF moved to gguf/
+    assert (run / "gguf" / gguf.name).read_bytes() == b"GGUF data"
+    assert not (run / "gguf" / "Modelfile").exists()  # Unsloth's stock-template Modelfile gone
+    assert len(notes) == 3
 
 
 def test_finish_keeps_merged_on_request(tmp_path):
     run, gguf = make_export(tmp_path)
-    export_files.finish(run, run / "gguf", gguf, "q4_k_m", keep_merged=True)
+    record, _ = export_files.finish(run, run / "gguf", gguf, "q4_k_m", keep_merged=True)
     assert (run / "gguf" / "model.safetensors").exists()
+    assert record["path"] == "gguf_gguf/m.Q4_K_M.gguf" and gguf.exists()  # nothing to rename onto
 
 
 def test_finish_never_removes_the_folder_holding_the_gguf(tmp_path):
     run, gguf = make_export(tmp_path, gguf_folder="gguf")  # an Unsloth version writing both into one folder
-    export_files.finish(run, run / "gguf", gguf, "q4_k_m")
-    assert gguf.exists()
+    record, _ = export_files.finish(run, run / "gguf", gguf, "q4_k_m")
+    assert gguf.exists() and record["path"] == "gguf/m.Q4_K_M.gguf"
 
 
 def test_gguf_outside_the_run_folder_is_recorded_absolute(tmp_path):
