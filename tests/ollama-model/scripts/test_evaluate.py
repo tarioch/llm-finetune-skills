@@ -169,3 +169,20 @@ def test_a_check_that_wraps_the_streams_cannot_break_printing(capsys):
     assert sys.stdout is stdout and sys.stderr is stderr
     sys.stdout.write(evaluate.summary(results, ["m"]) + "\n")
     assert f"m: {len(examples)}/{len(examples)} right" in capsys.readouterr().out
+
+
+def test_the_answer_is_kept_when_only_the_check_fails():
+    def broken_check(prompt, expected, answer):
+        raise AttributeError("'str' object has no attribute 'units'")
+
+    [result] = evaluate.evaluate(EXAMPLES[:1], ["m"], lambda model, messages: "SELECT 9", broken_check)
+    assert result["ok"] is False and result["error"].startswith("AttributeError")
+    assert result["answer"] == "SELECT 9"
+
+
+def test_there_is_no_answer_when_asking_fails():
+    def ask(model, messages):
+        raise TimeoutError("slow")
+
+    [result] = evaluate.evaluate(EXAMPLES[:1], ["m"], ask, evaluate.normalized_equal)
+    assert result["answer"] == "" and result["error"].startswith("TimeoutError")
