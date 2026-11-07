@@ -53,11 +53,16 @@ In Claude Code, add this repository as a plugin marketplace and install the plug
 Or copy a skill folder from `skills/` into `~/.claude/skills/` (personal) or `.claude/skills/` (one project). For
 claude.ai, zip a skill folder and upload it under Settings, Capabilities, Skills.
 
+The skills run their scripts through a launcher, `scripts/run`, which their `allowed-tools` allow, together with the
+Ollama and `nvidia-smi` commands they use (not `ollama push`). So they also work in Claude Code's auto mode, which
+refuses scripts it doesn't know. The launcher needs bash (on Windows, the Git Bash that Claude Code uses).
+
 ## Requirements
 
 - `unsloth-lora`: an NVIDIA GPU and a Python environment with Unsloth installed (see the
-  [Unsloth installation docs](https://docs.unsloth.ai/get-started/installing-+-updating)). `check_data.py` and
-  `train_status.py` need only the standard library.
+  [Unsloth installation docs](https://docs.unsloth.ai/get-started/installing-+-updating)). The launcher finds that
+  environment's Python through `UNSLOTH_PYTHON` or the first line of `~/.config/llm-finetune/unsloth-python`.
+  `check_data.py` and `train_status.py` need only the standard library.
 - `ollama-model`: Ollama. The scripts need only the standard library.
 
 ## License
