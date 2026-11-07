@@ -75,6 +75,15 @@ ${CLAUDE_SKILL_DIR}/scripts/run release_notes.py --run <run> --eval <run>/eval.m
 Ask the app that uses the model one of the evaluation questions. Ollama's OpenAI-compatible `/v1` endpoint ignores
 the Modelfile's `temperature`, so clients have to send it with each request.
 
+### 5. Clean up (ask first)
+
+List the Ollama models created only for the comparison (`ollama list`) and offer to remove the ones the user won't
+keep. Remove only what they agree to:
+
+```bash
+ollama rm <name>:<tag>
+```
+
 ## Rules
 
 - Keep the Modelfile generated and LF-only (`.gitattributes`: `Modelfile text eol=lf`).
