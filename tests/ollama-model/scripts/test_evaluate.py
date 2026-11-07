@@ -1,3 +1,5 @@
+import sys
+
 import evaluate
 import pytest
 
@@ -68,3 +70,39 @@ def test_ollama_chat_request(monkeypatch):
     assert evaluate.ollama_chat("http://h:1", "m", [{"role": "user", "content": "q"}], 5) == "SELECT 1"
     assert sent["url"] == "http://h:1/api/chat" and sent["timeout"] == 5
     assert b'"temperature": 0' in sent["body"] and b'"stream": false' in sent["body"]
+
+
+def test_asks_one_model_everything_before_the_next():
+    asked = []
+
+    def ask(model, messages):
+        asked.append((model, messages[-1]["content"]))
+        return "SELECT 1"
+
+    results = evaluate.evaluate(EXAMPLES, ["a", "b"], ask, evaluate.normalized_equal)
+    # Ollama keeps the model loaded instead of swapping it for every answer
+    assert asked == [("a", "one"), ("a", "two"), ("b", "one"), ("b", "two")]
+    assert [(r["example"], r["model"]) for r in results] == [(0, "a"), (0, "b"), (1, "a"), (1, "b")]
+
+
+class Wrapper:
+    """What colorama.init() does to the streams on Windows, which TatSu calls on every parse."""
+
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, text):
+        return self.stream.write(text)
+
+
+def test_a_check_that_wraps_the_streams_cannot_break_printing(capsys):
+    def wrapping_check(prompt, expected, answer):
+        sys.stdout, sys.stderr = Wrapper(sys.stdout), Wrapper(sys.stderr)
+        return True
+
+    stdout, stderr = sys.stdout, sys.stderr
+    examples = EXAMPLES * (sys.getrecursionlimit() // 2)  # with the wrappers piled up, print() would recurse too deep
+    results = evaluate.evaluate(examples, ["m"], lambda model, messages: "SELECT 1", wrapping_check)
+    assert sys.stdout is stdout and sys.stderr is stderr
+    sys.stdout.write(evaluate.summary(results, ["m"]) + "\n")
+    assert f"m: {len(examples)}/{len(examples)} right" in capsys.readouterr().out

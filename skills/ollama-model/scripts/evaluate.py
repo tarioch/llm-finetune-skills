@@ -55,17 +55,34 @@ def ollama_chat(host: str, model: str, messages: list[dict], timeout: float) -> 
         return json.load(response)["message"]["content"]
 
 
+def checked(check: Check, prompt: list[dict], expected: str, answer: str) -> bool:
+    """Run the check, then put back ``sys.stdout`` and ``sys.stderr`` if it replaced them.
+
+    Libraries a check uses can wrap the streams on every call: TatSu (beanquery's parser) calls ``colorama.init()``
+    on every parse, which on Windows wraps ``sys.stdout`` once more each time. After a few hundred answers, printing
+    the summary recursed through all the wrappers and the run died with a RecursionError, the summary unprinted.
+    """
+    streams = sys.stdout, sys.stderr
+    try:
+        return bool(check(prompt, expected, answer))
+    finally:
+        sys.stdout, sys.stderr = streams
+
+
 def evaluate(
     examples: list[list[dict]], models: list[str], ask: Callable[[str, list[dict]], str], check: Check
 ) -> list[dict]:
+    """Asks one model all examples before the next model: Ollama keeps one model loaded instead of swapping per answer.
+
+    The results are ordered by example, then model, as given."""
     results = []
-    for i, conversation in enumerate(examples):
-        prompt, expected = conversation[:-1], conversation[-1]["content"]
-        for model in models:
+    for model in models:
+        for i, conversation in enumerate(examples):
+            prompt, expected = conversation[:-1], conversation[-1]["content"]
             start = time.monotonic()
             try:
                 answer, error = EMPTY_THINK.sub("", ask(model, prompt)), None
-                ok = bool(check(prompt, expected, answer))
+                ok = checked(check, prompt, expected, answer)
             except Exception as e:  # noqa: BLE001 - one failing example must not end the comparison
                 answer, error, ok = "", f"{type(e).__name__}: {e}", False
             results.append(
@@ -80,7 +97,8 @@ def evaluate(
                     "error": error,
                 }
             )
-    return results
+    order = {model: n for n, model in enumerate(models)}
+    return sorted(results, key=lambda r: (r["example"], order[r["model"]]))
 
 
 def summary(results: list[dict], models: list[str]) -> str:
