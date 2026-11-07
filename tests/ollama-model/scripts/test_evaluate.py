@@ -53,10 +53,11 @@ def test_errors_count_as_wrong():
 
 def test_custom_check(tmp_path):
     (tmp_path / "checks.py").write_text(
-        "def same_digit(prompt, expected, answer):\n    return expected[-1] == answer[-1]\n", encoding="utf-8"
+        "def same_digit(prompt, expected, answer):\n    return {'digit': expected[-1] == answer[-1]}\n",
+        encoding="utf-8",
     )
     check = evaluate.load_check(f"{tmp_path / 'checks.py'}:same_digit")
-    assert check([], "SELECT 1", "select 1")
+    assert check([], "SELECT 1", "select 1") == {"digit": True}
     with pytest.raises(SystemExit):
         evaluate.load_check("checks.py")
 
@@ -161,7 +162,7 @@ class Wrapper:
 def test_a_check_that_wraps_the_streams_cannot_break_printing(capsys):
     def wrapping_check(prompt, expected, answer):
         sys.stdout, sys.stderr = Wrapper(sys.stdout), Wrapper(sys.stderr)
-        return True
+        return {"exact": True}
 
     stdout, stderr = sys.stdout, sys.stderr
     examples = EXAMPLES * (sys.getrecursionlimit() // 2)  # with the wrappers piled up, print() would recurse too deep
@@ -186,3 +187,55 @@ def test_there_is_no_answer_when_asking_fails():
 
     [result] = evaluate.evaluate(EXAMPLES[:1], ["m"], ask, evaluate.normalized_equal)
     assert result["answer"] == "" and result["error"].startswith("TimeoutError")
+
+
+def _scored(check, answers):
+    return evaluate.evaluate(EXAMPLES, ["m"], lambda m, msgs: answers[msgs[-1]["content"]], check)
+
+
+def test_a_check_can_return_named_scores_and_the_first_one_is_the_headline():
+    def check(prompt, expected, answer):
+        return {"strict": answer == expected, "loose": answer.startswith("SELECT")}
+
+    results = _scored(check, {"one": "SELECT 1", "two": "SELECT 9"})
+    assert [r["scores"] for r in results] == [{"strict": 1.0, "loose": 1.0}, {"strict": 0.0, "loose": 1.0}]
+    assert [r["ok"] for r in results] == [True, False]  # right means the first score is 1
+    [stats] = evaluate.model_stats(results, ["m"])
+    assert (stats["right"], stats["scores"]) == (1, {"strict": 0.5, "loose": 1.0})
+    text = evaluate.report(results, ["m"])
+    assert "| Model | Right | Share | strict | loose |" in text and "| `m` | 1/2 | 50% | 50.0% | 100.0% |" in text
+    assert "m: 1/2 right (strict 50.0%, loose 100.0%)" in evaluate.summary(results, ["m"])
+
+
+def test_a_check_can_return_a_fraction():
+    results = _scored(
+        lambda prompt, expected, answer: {"quality": 0.5 if answer == "half" else 1.0},
+        {"one": "half", "two": "SELECT 2"},
+    )
+    [stats] = evaluate.model_stats(results, ["m"])
+    assert (stats["right"], stats["scores"]) == (1, {"quality": 0.75})  # a half score is not a right answer
+    assert "| Model | Right | Share | quality |" in evaluate.report(results, ["m"])
+
+
+def test_one_true_false_score_has_no_extra_column():
+    results = _scored(evaluate.normalized_equal, {"one": "SELECT 1", "two": "x"})
+    assert "| Model | Right | Share | Median s per answer |" in evaluate.report(results, ["m"])
+
+
+def test_a_score_outside_zero_to_one_is_an_error_not_a_score():
+    results = _scored(lambda prompt, expected, answer: {"quality": 2}, {"one": "SELECT 1", "two": "SELECT 2"})
+    assert [r["ok"] for r in results] == [False, False]
+    assert "between 0 and 1" in results[0]["error"]
+
+
+@pytest.mark.parametrize("result", [True, 0.5, {}, "yes"])  # a bare value is not a dict of named scores
+def test_a_check_must_return_named_scores(result):
+    results = _scored(lambda prompt, expected, answer: result, {"one": "SELECT 1", "two": "SELECT 2"})
+    assert [r["ok"] for r in results] == [False, False]
+    assert "named scores" in results[0]["error"]
+
+
+def test_a_bool_counts_as_one_or_zero_and_the_built_in_check_gives_numbers():
+    assert evaluate.to_scores({"strict": True, "loose": 0.5}) == {"strict": 1.0, "loose": 0.5}
+    assert evaluate.normalized_equal([], "SELECT  1", "SELECT 1") == {"exact": 1.0}
+    assert evaluate.normalized_equal([], "SELECT 1", "SELECT 2") == {"exact": 0.0}
