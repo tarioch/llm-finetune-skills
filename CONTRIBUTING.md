@@ -63,5 +63,7 @@ warnings included) and a check of the SKILL.md frontmatter.
   the PR, the `Label check` fails without one of these labels, and the label decides the release notes category.
 - Commit subjects are imperative and start with a capital letter, the body explains why.
 - Changes go through pull requests into `main` and are merged with a merge commit. `CI ok` is the check to require.
-- Releases are drafted by release-drafter. Bump `version` in `.claude-plugin/plugin.json` with a release, Claude
-  Code uses it to notice updates.
+- Releases are drafted by release-drafter. Claude Code uses `version` in `.claude-plugin/plugin.json` to notice
+  updates, so a pull request that changes `skills/` has to raise it above the latest release tag
+  (`.github/scripts/check_version.py`, part of the `Lint` job). The first change after a release bumps it, later
+  ones pass until the release is published. Publish the release with the tag `v<version>`.

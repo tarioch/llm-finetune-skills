@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # the version check compares with the release tags and the base branch
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.14"
@@ -34,6 +35,12 @@ jobs:
       - name: Validate the plugin with Claude Code
         # --strict: warnings fail too (the plugin directory reports them on submission)
         run: npx --yes @anthropic-ai/claude-code@2.1.319 plugin validate --strict .
+
+      - name: Check that a change to skills/ bumps the plugin version
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: origin/${{ github.base_ref }}
+        run: python3 .github/scripts/check_version.py "$BASE"
 
       - name: Check the skills' frontmatter
         run: |
