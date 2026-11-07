@@ -99,6 +99,13 @@ converter on every export; tell the user what it means (`references/troubleshoot
 export. The run folder is now ready for serving: continue with the `ollama-model` skill, or hand `run.json`'s
 `chat` section to whatever serves the model (`references/run-json.md`).
 
+### 6. Clean up (ask first)
+
+Once the model is exported and evaluated, offer to delete what is only needed to resume or to check the setup:
+`<run>/checkpoints/` (for `--resume`, several GB for a 7B model) and the `<run>-smoke` folder. Say how much space
+each takes and delete only what the user agrees to. Keep `adapter/` and `run.json`: they are small, and they are
+what a new export and the release notes need.
+
 ## Rules
 
 - Never change the dataset to make an evaluation look better, and never evaluate on training data.
