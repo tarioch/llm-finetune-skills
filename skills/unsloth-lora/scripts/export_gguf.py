@@ -65,7 +65,7 @@ def main() -> int:
     run_file.write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
     print(
         f"recorded it in {run_file}\n\nNext: package it for a server, e.g. the ollama-model skill:\n"
-        f"  python modelfile.py --run {args.run}"
+        f"  modelfile.py --run {args.run.resolve()}"
     )
     return 0
 
