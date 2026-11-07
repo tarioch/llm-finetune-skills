@@ -1,6 +1,7 @@
 ---
 name: unsloth-lora
 description: Fine-tune an instruct LLM with a LoRA on a local NVIDIA GPU using Unsloth, from a chat-format JSONL dataset, and export it as a GGUF together with a run.json recording what a server needs to prompt it like training did. Use for training or retraining a model, or trying several base models.
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/run *) Bash(nvidia-smi) Bash(ollama ps) Bash(ollama stop *)
 ---
 
 # Unsloth LoRA training
@@ -11,9 +12,20 @@ model is a separate step: the run folder this skill leaves (GGUF plus `run.json`
 `ollama-model` takes.
 
 All scripts are in `scripts/` next to this file. `check_data.py` needs only the standard library; `preflight.py`,
-`train.py` and `export_gguf.py` run with the Python of the Unsloth environment. Run them by path, from the folder
-where the runs should live, not from a git checkout: Unsloth writes an `unsloth_compiled_cache/` folder into the
-current directory.
+`train.py` and `export_gguf.py` run with the Python of the Unsloth environment.
+
+## How to run the scripts
+
+- Run every script through the launcher, in the Bash tool, exactly in the form the steps show:
+  `${CLAUDE_SKILL_DIR}/scripts/run <script> [args]`. It runs `scripts/<script>.py` with the Unsloth Python, and this
+  skill pre-approves that command (`allowed-tools`), so it runs without a permission prompt, also in auto mode.
+  Don't call the scripts with a Python path of your own: that command isn't pre-approved.
+- The approval holds for the turn the skill is invoked in. When the user has sent a message since (a later step,
+  checking on a run), invoke the skill again before running the next script.
+- Run from the folder where the runs should live, not from a git checkout: Unsloth writes an
+  `unsloth_compiled_cache/` folder into the current directory. `-C <runs>` makes the launcher change to that folder
+  first. Don't `cd` in a command of its own, the shell's working folder can be reset between commands; for the same
+  reason give `--data`, `--eval`, `--out` and `--run` as absolute paths.
 
 ## Before you start, find out
 
@@ -21,15 +33,18 @@ current directory.
   there is none, propose holding out examples before training.
 - The base model(s), as Unsloth 4-bit names (e.g. `unsloth/Qwen2.5-Coder-3B-Instruct-bnb-4bit`). Several base
   models means one run folder each and the same steps for each.
-- The machine: training needs a CUDA GPU and the Unsloth environment's Python. If you run on another computer
-  (remote session), confirm which Python is the Unsloth one before anything else.
+- The machine: training needs a CUDA GPU and the Unsloth environment's Python. The launcher takes that Python from
+  `$UNSLOTH_PYTHON`, else from the first line of `~/.config/llm-finetune/unsloth-python`. If neither is set, it says
+  so: ask the user for the path of the Unsloth environment's `python` and write it to that file. If you run on
+  another computer (remote session), confirm which Python is the Unsloth one before anything else.
+- The folder the runs go in (outside any git checkout); create it if it doesn't exist.
 
 ## Steps
 
 ### 1. Check the data
 
 ```bash
-python scripts/check_data.py data/ --eval eval.jsonl
+${CLAUDE_SKILL_DIR}/scripts/run check_data /abs/data --eval /abs/eval.jsonl
 ```
 
 Must print `ok`. It fails on broken lines, conversations that don't end with an assistant answer, and validation or
@@ -40,7 +55,7 @@ reports how system messages are used: none, one shared, or mixed (see `reference
 ### 2. Preflight the machine
 
 ```bash
-python scripts/preflight.py --need-gib 8 --out outputs/<run>
+${CLAUDE_SKILL_DIR}/scripts/run -C <runs> preflight --need-gib 8 --out <runs>/<run>
 ```
 
 Free GPU memory matters more than total: games, a browser with GPU acceleration, or a model a local server still
@@ -53,7 +68,7 @@ If an import fails, the environment is broken, see `references/troubleshooting.m
 ### 3. Smoke run
 
 ```bash
-python scripts/train.py --model <base> --data data --out outputs/<run> --max-steps 2
+${CLAUDE_SKILL_DIR}/scripts/run -C <runs> train --model <base> --data /abs/data --out <runs>/<run>-smoke --max-steps 2
 ```
 
 Read the output, don't just check the exit code:
@@ -68,7 +83,7 @@ Read the output, don't just check the exit code:
 ### 4. Full run
 
 ```bash
-python scripts/train.py --model <base> --data data --out outputs/<run>
+${CLAUDE_SKILL_DIR}/scripts/run -C <runs> train --model <base> --data /abs/data --out <runs>/<run>
 ```
 
 Runs for a while (minutes for a few thousand examples on a 3B model, longer for 7B). Run it in the background with
@@ -79,7 +94,7 @@ overfitting: fewer epochs or more data.
 ### 5. Export
 
 ```bash
-python scripts/export_gguf.py --run outputs/<run>
+${CLAUDE_SKILL_DIR}/scripts/run -C <runs> export_gguf --run <runs>/<run>
 ```
 
 Writes the GGUF and records it in `run.json` with its size and checksum. It removes the merged 16-bit model

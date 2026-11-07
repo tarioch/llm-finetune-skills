@@ -53,11 +53,29 @@ In Claude Code, add this repository as a plugin marketplace and install the plug
 Or copy a skill folder from `skills/` into `~/.claude/skills/` (personal) or `.claude/skills/` (one project). For
 claude.ai, zip a skill folder and upload it under Settings, Capabilities, Skills.
 
+Install the plugin yourself: in auto mode, Claude Code refuses to add a marketplace or install a plugin on Claude's
+own initiative.
+
+### Permissions
+
+Each skill pre-approves the commands it runs (`allowed-tools` in its SKILL.md), so they run without a permission
+prompt, also in auto mode, where Claude Code would otherwise refuse to run scripts it didn't write:
+
+- `unsloth-lora`: its launcher `scripts/run <script>` (which runs that script with the Unsloth Python),
+  `nvidia-smi`, `ollama ps` and `ollama stop`.
+- `ollama-model`: `python`/`python3` and `uv run python` on `modelfile.py` and `evaluate.py`, and `ollama create`,
+  `run`, `stop`, `pull`, `ps` and `list`. Publishing (`ollama cp`, `push`) and `ollama rm` still ask.
+
+The approval holds for the turn in which the skill is invoked, so Claude invokes the skill again for a step that
+comes after a message of yours.
+
 ## Requirements
 
 - `unsloth-lora`: an NVIDIA GPU and a Python environment with Unsloth installed (see the
   [Unsloth installation docs](https://docs.unsloth.ai/get-started/installing-+-updating)). `check_data.py` needs
-  only the standard library.
+  only the standard library. The scripts run through `scripts/run`, a Bash script (on Windows, Claude Code's Git
+  Bash), which takes the Unsloth Python from `$UNSLOTH_PYTHON` or the first line of
+  `~/.config/llm-finetune/unsloth-python`; Claude asks for the path and writes that file when neither is set.
 - `ollama-model`: Ollama. The scripts need only the standard library.
 
 ## License

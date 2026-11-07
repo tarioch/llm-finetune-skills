@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Run one of this skill's scripts with the Python of the Unsloth environment:
+#
+#     run [-C <dir>] <script> [args...]     e.g.  run -C /abs/runs train --model ... --data /abs/data --out /abs/runs/my-3b
+#
+# -C runs the script in <dir> (Unsloth writes unsloth_compiled_cache/ into the current directory), so the command
+# needs no separate "cd".
+# The Python is $UNSLOTH_PYTHON, else the first line of ~/.config/llm-finetune/unsloth-python. Going through this
+# one command, instead of "<some python> <path>/train.py", is what lets SKILL.md pre-approve every script with a
+# single allowed-tools rule, whatever the Python's path is on this machine.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "${1:-}" = "-C" ]; then
+  cd "${2:?-C needs a directory}"
+  shift 2
+fi
+script="${1:-}"
+if [[ ! "$script" =~ ^[a-z_]+$ ]] || [ ! -f "$here/$script.py" ]; then
+  echo "usage: run [-C <dir>] <script> [args...], where <script> is one of:" >&2
+  for f in "$here"/*.py; do echo "  $(basename "$f" .py)" >&2; done
+  exit 2
+fi
+shift
+
+py="${UNSLOTH_PYTHON:-}"
+conf="${XDG_CONFIG_HOME:-$HOME/.config}/llm-finetune/unsloth-python"
+if [ -z "$py" ] && [ -f "$conf" ]; then
+  py="$(head -n 1 "$conf" | tr -d '\r')"
+fi
+if [ -z "$py" ]; then
+  echo "no Unsloth Python configured: set UNSLOTH_PYTHON, or write the path of the Unsloth environment's python" >&2
+  echo "to $conf" >&2
+  exit 2
+fi
+exec "$py" "$here/$script.py" "$@"
