@@ -82,13 +82,13 @@ overfitting: fewer epochs or more data.
 python scripts/export_gguf.py --run outputs/<run>
 ```
 
-Writes the GGUF and records it in `run.json` with its size and checksum. It removes the merged 16-bit model
-(several GB, `--keep-merged` keeps it) and the Modelfile Unsloth writes next to the GGUF: that one uses the stock
-template, not the layout training used, so don't follow Unsloth's hint to `ollama create` from it. If export prints
-a `[CRITICAL]` warning about llama.cpp's converter, see `references/troubleshooting.md`. The run folder is now
-ready for serving: continue with the
-`ollama-model` skill, or hand `run.json`'s `chat` section to whatever serves the model
-(`references/run-json.md`).
+Writes the GGUF to `<run>/gguf_gguf/` (Unsloth appends `_gguf` to the folder name it is given) and records it in
+`run.json` with its size and checksum. It removes the merged 16-bit model (several GB, `--keep-merged` keeps it)
+and the Modelfile Unsloth writes next to the GGUF: that one uses the stock template, not the layout training used,
+so don't follow Unsloth's hint to `ollama create` from it. Expect a `[CRITICAL]` warning about llama.cpp's
+converter on every export; tell the user what it means (`references/troubleshooting.md`), it doesn't stop the
+export. The run folder is now ready for serving: continue with the `ollama-model` skill, or hand `run.json`'s
+`chat` section to whatever serves the model (`references/run-json.md`).
 
 ## Rules
 
