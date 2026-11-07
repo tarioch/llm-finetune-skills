@@ -60,6 +60,8 @@ case "$script" in
             previous="$arg"
         done
         if [ -n "$folder" ]; then
+            # Windows paths: dirname and cd want forward slashes
+            folder="${folder//\\//}"
             # the working directory changes, so a relative path would point somewhere else
             case "$folder" in
                 /* | [A-Za-z]:*) ;;
@@ -71,4 +73,4 @@ case "$script" in
         ;;
 esac
 
-exec "$python" "$here/$script" "$@"
+exec "${python//\\//}" "$here/$script" "$@"
