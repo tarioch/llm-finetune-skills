@@ -33,7 +33,9 @@ def run(*args, env=None, home=None):
     if home is not None:
         environment["HOME"] = str(home)
     environment.update(env or {})
-    return subprocess.run(["bash", RUN.as_posix(), *args], capture_output=True, text=True, env=environment)
+    return subprocess.run(
+        [shutil.which("bash"), RUN.as_posix(), *args], capture_output=True, text=True, env=environment
+    )
 
 
 def test_unsloth_scripts_use_unsloth_python_in_the_runs_folder(tmp_path, fake_python):
