@@ -57,6 +57,9 @@ The skills run their scripts through a launcher, `scripts/run`, which their `all
 Ollama and `nvidia-smi` commands they use (not `ollama push`). So they also work in Claude Code's auto mode, which
 refuses scripts it doesn't know. The launcher needs bash (on Windows, the Git Bash that Claude Code uses).
 
+Install the plugin yourself: in auto mode, Claude Code refuses to add a marketplace or install a plugin on Claude's
+own initiative.
+
 ## Requirements
 
 - `unsloth-lora`: an NVIDIA GPU and a Python environment with Unsloth installed (see the
