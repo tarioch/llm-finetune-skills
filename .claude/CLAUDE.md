@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-@CONTRIBUTING.md
+@../CONTRIBUTING.md
 
 ## Notes for Claude
 
