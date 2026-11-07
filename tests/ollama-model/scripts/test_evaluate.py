@@ -22,6 +22,18 @@ def test_compares_models():
     assert "good: 2/2 right" in text and "bad: 1/2 right" in text and "disagree: [1]" in text
 
 
+def test_one_model_after_the_other():
+    asked = []
+
+    def ask(model, messages):
+        asked.append((model, messages[-1]["content"]))
+        return "SELECT 1"
+
+    results = evaluate.evaluate(EXAMPLES, ["a", "b"], ask, evaluate.normalized_equal)
+    assert asked == [("a", "one"), ("a", "two"), ("b", "one"), ("b", "two")]
+    assert [(r["example"], r["model"]) for r in results] == [(0, "a"), (0, "b"), (1, "a"), (1, "b")]
+
+
 def test_empty_think_block_is_removed():
     [result, _] = evaluate.evaluate(
         EXAMPLES, ["m"], lambda model, messages: "<think>\n\n</think>\n\nSELECT 1", evaluate.normalized_equal

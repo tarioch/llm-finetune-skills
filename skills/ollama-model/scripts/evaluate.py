@@ -81,11 +81,15 @@ Answer = str | dict
 def evaluate(
     examples: list[list[dict]], models: list[str], ask: Callable[[str, list[dict]], Answer], check: Check
 ) -> list[dict]:
-    """Ask every model every example; ``ask`` returns the answer text, or a dict like :func:`ollama_chat`'s."""
+    """Ask every model every example; ``ask`` returns the answer text, or a dict like :func:`ollama_chat`'s.
+
+    One model after the other, so Ollama loads each model once instead of switching for every example when the GPU
+    holds only one. The results come back ordered by example, then model.
+    """
     results = []
-    for i, conversation in enumerate(examples):
-        prompt, expected = conversation[:-1], conversation[-1]["content"]
-        for model in models:
+    for model in models:
+        for i, conversation in enumerate(examples):
+            prompt, expected = conversation[:-1], conversation[-1]["content"]
             start = time.monotonic()
             tokens = token_seconds = None
             try:
@@ -110,7 +114,8 @@ def evaluate(
                     "error": error,
                 }
             )
-    return results
+    order = {model: n for n, model in enumerate(models)}
+    return sorted(results, key=lambda r: (r["example"], order[r["model"]]))
 
 
 def _size(sizes: dict[str, int], model: str) -> int | None:
@@ -248,12 +253,13 @@ def main() -> int:
         lambda model, messages: ollama_chat(args.host, model, messages, args.timeout),
         load_check(args.check),
     )
+    sizes = ollama_sizes(args.host, args.timeout)
+    # the summary first and flushed: the files are on disk either way, the console may not survive interpreter exit
+    print(summary(results, args.model, sizes), flush=True)
     if args.out:
         args.out.write_text("".join(json.dumps(r) + "\n" for r in results), encoding="utf-8")
-    sizes = ollama_sizes(args.host, args.timeout)
     if args.report:
         args.report.write_bytes(report(results, args.model, sizes).encode("utf-8"))
-    print(summary(results, args.model, sizes))
     return 0
 
 
