@@ -31,9 +31,6 @@
 - `The tokenizer has new PAD/BOS/EOS tokens ... {'bos_token_id': None}`: Qwen models have no BOS token, Unsloth
   only reports aligning the config with the tokenizer.
 - Deprecation warnings from transformers (`use_return_dict`, `has_cuda` and similar).
-- The `epoch` in the training log shows about half the expected value (0.25 at step 200 of a 2-epoch run of 792
-  steps, where 0.5 would be right; seen with unsloth 2026.9.11). Training still runs every step, go by the step
-  count.
 
 ## Export
 
