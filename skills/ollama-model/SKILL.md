@@ -46,7 +46,9 @@ ${CLAUDE_SKILL_DIR}/scripts/run evaluate.py --eval <eval.jsonl> --model <name>:<
 ```
 
 Use a domain check (`--check <checks.py>:function`) when exact match is too strict, e.g. execute a generated query
-and compare the results. A check that imports the project's own code or dependencies needs the project's
+and compare the results. The check returns named scores, numbers from 0 to 1, such as
+`{"strict": 1, "loose": 1}` (the first is the headline, the report has a column per name; without `--check` the
+one score is `exact`). Put all judging into the check: the script only adds up what it returns. A check that imports the project's own code or dependencies needs the project's
 environment: with a uv project, `${CLAUDE_SKILL_DIR}/scripts/run --uv <project> evaluate.py ...`. The report gives
 per model the score, median time per answer, tokens per second and size, and for each model against the first how
 many examples only one of the two got right: on a small set that says more than the two scores. Show the user the

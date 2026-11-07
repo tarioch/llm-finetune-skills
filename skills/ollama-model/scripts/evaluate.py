@@ -4,7 +4,10 @@
 The evaluation set has the training format: each line's ``messages`` ends with the expected assistant answer, the
 messages before it are sent to each model. An answer is right when the check says so: by default the answer and
 the expectation are equal after whitespace normalization; ``--check file.py:function`` plugs in a domain check
-(``function(prompt_messages, expected, answer) -> bool``), e.g. run the generated query and compare the rows.
+(``function(prompt_messages, expected, answer)``), e.g. run the generated query and compare the rows. The check
+returns a dict of named scores, each a number from 0 to 1, such as ``{"strict": 0, "loose": 1}`` (a bool counts as
+1 or 0). The first name is the headline: an answer is right when that score is 1, and the report shows the mean of
+every name. The default check returns ``{"exact": 1}`` or ``{"exact": 0}``.
 
     python evaluate.py --eval eval.jsonl --model my-model:3b --model my-model:7b --model my-model:previous
     python evaluate.py --eval eval.jsonl --model my-model:3b --check checks.py:same_rows --out results.jsonl
@@ -31,12 +34,24 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
-Check = Callable[[list[dict], str, str], bool]
+Scores = dict[str, float]
+Check = Callable[[list[dict], str, str], "dict[str, float]"]
 EMPTY_THINK = re.compile(r"^\s*<think>\s*</think>\s*")
 
 
-def normalized_equal(prompt: list[dict], expected: str, answer: str) -> bool:
-    return " ".join(expected.split()) == " ".join(answer.split())
+def to_scores(result: object) -> Scores:
+    """A check's result, a dict of named scores (numbers from 0 to 1, a bool is 1 or 0), as floats."""
+    if not isinstance(result, dict) or not result:
+        raise ValueError(f"a check returns a dict of named scores such as {{'strict': True}}, not {result!r}")
+    scores = {str(name): float(value) for name, value in result.items()}
+    for name, value in scores.items():
+        if not 0 <= value <= 1:
+            raise ValueError(f"score {name!r} is {value}, scores are between 0 and 1")
+    return scores
+
+
+def normalized_equal(prompt: list[dict], expected: str, answer: str) -> dict[str, float]:
+    return {"exact": float(" ".join(expected.split()) == " ".join(answer.split()))}
 
 
 def load_check(spec: str | None) -> Check:
@@ -78,7 +93,7 @@ def ollama_sizes(host: str, timeout: float) -> dict[str, int]:
 Answer = str | dict
 
 
-def checked(check: Check, prompt: list[dict], expected: str, answer: str) -> bool:
+def checked(check: Check, prompt: list[dict], expected: str, answer: str) -> Scores:
     """Run the check, then put back ``sys.stdout`` and ``sys.stderr`` if it replaced them.
 
     Libraries a check uses can wrap the streams on every call: TatSu (beanquery's parser) calls ``colorama.init()``
@@ -87,7 +102,7 @@ def checked(check: Check, prompt: list[dict], expected: str, answer: str) -> boo
     """
     streams = sys.stdout, sys.stderr
     try:
-        return bool(check(prompt, expected, answer))
+        return to_scores(check(prompt, expected, answer))
     finally:
         sys.stdout, sys.stderr = streams
 
@@ -105,19 +120,22 @@ def evaluate(
             start = time.monotonic()
             tokens = token_seconds = None
             answer, error = "", None  # the answer stays when only the check fails, to look into it afterwards
+            scores: Scores = {}
             try:
                 reply = ask(model, prompt)
                 if isinstance(reply, dict):
                     reply, tokens, token_seconds = reply["content"], reply.get("tokens"), reply.get("token_seconds")
                 answer = EMPTY_THINK.sub("", reply)
-                ok = checked(check, prompt, expected, answer)
+                scores = checked(check, prompt, expected, answer)
             except Exception as e:  # noqa: BLE001 - one failing example must not end the comparison
-                error, ok = f"{type(e).__name__}: {e}", False
+                error = f"{type(e).__name__}: {e}"
+            ok = bool(scores) and next(iter(scores.values())) >= 1  # the first score is the headline
             results.append(
                 {
                     "example": i,
                     "model": model,
                     "ok": ok,
+                    "scores": scores,
                     "seconds": round(time.monotonic() - start, 2),
                     "tokens": tokens,
                     "token_seconds": token_seconds,
@@ -136,7 +154,16 @@ def _size(sizes: dict[str, int], model: str) -> int | None:
     return sizes.get(model, sizes.get(f"{model}:latest") if ":" not in model else None)
 
 
+def score_names(results: list[dict]) -> list[str]:
+    """The names of the scores in the order the check gave them."""
+    names: dict[str, None] = {}
+    for r in results:
+        names.update(dict.fromkeys(r.get("scores") or {}))
+    return list(names)
+
+
 def model_stats(results: list[dict], models: list[str], sizes: dict[str, int] | None = None) -> list[dict]:
+    names = score_names(results)
     stats = []
     for model in models:
         mine = [r for r in results if r["model"] == model]
@@ -145,6 +172,11 @@ def model_stats(results: list[dict], models: list[str], sizes: dict[str, int] | 
             {
                 "model": model,
                 "right": sum(r["ok"] for r in mine),
+                "scores": {  # an example without a score (the check failed) counts as 0
+                    name: sum((r.get("scores") or {}).get(name, 0.0) for r in mine) / len(mine) for name in names
+                }
+                if mine
+                else {},
                 "total": len(mine),
                 "errors": sum(r["error"] is not None for r in mine),
                 "median_seconds": statistics.median(r["seconds"] for r in mine) if mine else None,
@@ -188,8 +220,11 @@ def _stat_line(s: dict) -> str:
     speed = f", {s['tokens_per_second']:.0f} tokens/s" if s["tokens_per_second"] else ""
     errors = f", {s['errors']} errors" if s["errors"] else ""
     seconds = f"{s['median_seconds']:.1f} s" if s["median_seconds"] is not None else "?"
+    named = ", ".join(f"{n} {v:.1%}" for n, v in s["scores"].items()) if len(s["scores"]) > 1 else ""
+    named = f" ({named})" if named else ""
     return (
-        f"{s['model']}: {s['right']}/{s['total']} right{errors}, median {seconds} per answer{speed}, {_gib(s['bytes'])}"
+        f"{s['model']}: {s['right']}/{s['total']} right{named}{errors}, median {seconds} per answer{speed}, "
+        f"{_gib(s['bytes'])}"
     )
 
 
@@ -213,16 +248,21 @@ def _cell(text: str, width: int = 200) -> str:
 
 def report(results: list[dict], models: list[str], sizes: dict[str, int] | None = None, examples: int = 5) -> str:
     """Markdown: a table per model, the paired comparison, and the first examples where the models disagree."""
+    names = score_names(results)
+    # a single all-or-nothing score is what "Right" and "Share" already show; more names or fractions get a column each
+    show_scores = len(names) > 1 or any(0 < v < 1 for r in results for v in (r.get("scores") or {}).values())
+    extra = names if show_scores else []
     out = [
-        "| Model | Right | Share | Median s per answer | Tokens/s | Size |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Model | Right | Share |" + "".join(f" {n} |" for n in extra) + " Median s per answer | Tokens/s | Size |",
+        "| --- | --- | --- |" + " --- |" * len(extra) + " --- | --- | --- |",
     ]
     for s in model_stats(results, models, sizes):
         share = f"{s['right'] / s['total']:.0%}" if s["total"] else "?"
         speed = f"{s['tokens_per_second']:.0f}" if s["tokens_per_second"] else "?"
         seconds = f"{s['median_seconds']:.1f}" if s["median_seconds"] is not None else "?"
         right = f"{s['right']}/{s['total']}" + (f" ({s['errors']} errors)" if s["errors"] else "")
-        out.append(f"| `{s['model']}` | {right} | {share} | {seconds} | {speed} | {_gib(s['bytes'])} |")
+        means = "".join(f" {s['scores'].get(n, 0):.1%} |" for n in extra)
+        out.append(f"| `{s['model']}` | {right} | {share} |{means} {seconds} | {speed} | {_gib(s['bytes'])} |")
     comparisons = paired(results, models)
     if comparisons:
         out.append("")
