@@ -6,8 +6,20 @@
     </linearGradient>
   </defs>
   <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
-  <g stroke="#ffffff" stroke-opacity="0.35" stroke-width="8" stroke-linecap="round"><line x1="200" y1="312" x2="400" y2="600"/><line x1="200" y1="312" x2="512" y2="380"/><line x1="200" y1="312" x2="624" y2="520"/><line x1="200" y1="512" x2="400" y2="600"/><line x1="200" y1="512" x2="512" y2="380"/><line x1="200" y1="512" x2="624" y2="520"/><line x1="200" y1="712" x2="400" y2="600"/><line x1="200" y1="712" x2="512" y2="380"/><line x1="200" y1="712" x2="624" y2="520"/><line x1="400" y1="600" x2="824" y2="412"/><line x1="400" y1="600" x2="824" y2="612"/><line x1="512" y1="380" x2="824" y2="412"/><line x1="512" y1="380" x2="824" y2="612"/><line x1="624" y1="520" x2="824" y2="412"/><line x1="624" y1="520" x2="824" y2="612"/></g>
-  <g stroke-linecap="round"><line x1="400" y1="236" x2="400" y2="788" stroke="#ffffff" stroke-opacity="0.25" stroke-width="36"/><line x1="512" y1="236" x2="512" y2="788" stroke="#ffffff" stroke-opacity="0.25" stroke-width="36"/><line x1="624" y1="236" x2="624" y2="788" stroke="#ffffff" stroke-opacity="0.25" stroke-width="36"/><line x1="400" y1="600" x2="400" y2="788" stroke="#ffffff" stroke-width="36"/><line x1="512" y1="380" x2="512" y2="788" stroke="#ffffff" stroke-width="36"/><line x1="624" y1="520" x2="624" y2="788" stroke="#ffffff" stroke-width="36"/></g>
-  <circle cx="200" cy="312" r="40" fill="#ffffff"/><circle cx="200" cy="512" r="40" fill="#ffffff"/><circle cx="200" cy="712" r="40" fill="#ffffff"/><circle cx="824" cy="412" r="40" fill="#ffffff"/><circle cx="824" cy="612" r="40" fill="#ffffff"/>
-  <circle cx="400" cy="600" r="64" fill="#ffffff"/><circle cx="400" cy="600" r="26" fill="#1f8a7a"/><circle cx="512" cy="380" r="64" fill="#ffffff"/><circle cx="512" cy="380" r="26" fill="#236178"/><circle cx="624" cy="520" r="64" fill="#ffffff"/><circle cx="624" cy="520" r="26" fill="#27386b"/>
+  <!-- speech bubble: rounded rectangle with a tail at the bottom left -->
+  <path d="M 268 196 H 756 A 108 108 0 0 1 864 304 V 616 A 108 108 0 0 1 756 724 H 440 L 290 852 L 316 724 H 268 A 108 108 0 0 1 160 616 V 304 A 108 108 0 0 1 268 196 Z" fill="#ffffff"/>
+  <g stroke-linecap="round" stroke-width="40">
+    <line x1="280" y1="328" x2="744" y2="328" stroke="#27386b" stroke-opacity="0.18"/>
+    <line x1="280" y1="460" x2="744" y2="460" stroke="#27386b" stroke-opacity="0.18"/>
+    <line x1="280" y1="592" x2="744" y2="592" stroke="#27386b" stroke-opacity="0.18"/>
+    <line x1="280" y1="328" x2="580" y2="328" stroke="#1f8a7a"/>
+    <line x1="280" y1="460" x2="420" y2="460" stroke="#236178"/>
+    <line x1="280" y1="592" x2="656" y2="592" stroke="#27386b"/>
+  </g>
+  <circle cx="580" cy="328" r="60" fill="#1f8a7a"/>
+  <circle cx="420" cy="460" r="60" fill="#236178"/>
+  <circle cx="656" cy="592" r="60" fill="#27386b"/>
+  <circle cx="580" cy="328" r="24" fill="#ffffff"/>
+  <circle cx="420" cy="460" r="24" fill="#ffffff"/>
+  <circle cx="656" cy="592" r="24" fill="#ffffff"/>
 </svg>
