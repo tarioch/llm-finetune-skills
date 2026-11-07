@@ -104,14 +104,15 @@ def evaluate(
             prompt, expected = conversation[:-1], conversation[-1]["content"]
             start = time.monotonic()
             tokens = token_seconds = None
+            answer, error = "", None  # the answer stays when only the check fails, to look into it afterwards
             try:
                 reply = ask(model, prompt)
                 if isinstance(reply, dict):
                     reply, tokens, token_seconds = reply["content"], reply.get("tokens"), reply.get("token_seconds")
-                answer, error = EMPTY_THINK.sub("", reply), None
+                answer = EMPTY_THINK.sub("", reply)
                 ok = checked(check, prompt, expected, answer)
             except Exception as e:  # noqa: BLE001 - one failing example must not end the comparison
-                answer, error, ok = "", f"{type(e).__name__}: {e}", False
+                error, ok = f"{type(e).__name__}: {e}", False
             results.append(
                 {
                     "example": i,
