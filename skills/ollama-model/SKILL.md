@@ -42,13 +42,16 @@ in particular that the app has to strip an empty `<think></think>` block. Try on
 ### 2. Compare
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/run evaluate.py --eval <eval.jsonl> --model <name>:<new> --model <name>:<previous> --out <run>/eval.jsonl
+${CLAUDE_SKILL_DIR}/scripts/run evaluate.py --eval <eval.jsonl> --model <name>:<new> --model <name>:<previous> --out <run>/eval.jsonl --report <run>/eval.md
 ```
 
 Use a domain check (`--check <checks.py>:function`) when exact match is too strict, e.g. execute a generated query
 and compare the results. A check that imports the project's own code or dependencies needs the project's
-environment: with a uv project, `${CLAUDE_SKILL_DIR}/scripts/run --uv <project> evaluate.py ...`. Show the user the scores and a few examples where the models disagree, and let them decide
-what ships. With several base models, this is where the size/quality trade-off gets decided. The last model stays
+environment: with a uv project, `${CLAUDE_SKILL_DIR}/scripts/run --uv <project> evaluate.py ...`. The report gives
+per model the score, median time per answer, tokens per second and size, and for each model against the first how
+many examples only one of the two got right: on a small set that says more than the two scores. Show the user the
+table and a few examples where the models disagree, and let them decide what ships. With several base models, this
+is where the size/quality trade-off gets decided. The last model stays
 loaded in Ollama for a few minutes: `ollama stop <model>` before training again, so its GPU memory is free.
 
 ### 3. Publish (only after the user says so)
@@ -60,8 +63,12 @@ ollama push <user>/<model>:<tag>
 
 Pushing needs the machine's Ollama key added to the user's ollama.com account. Moving tags like `latest` are a
 copy plus push of the same model. `ollama push` does not set the model page's readme, that's pasted on ollama.com.
-Write release notes from `run.json` (base model, data checksums, steps, losses) and the evaluation result, so the
-model can be traced back to the data it was trained on.
+Write the release notes: base model, data checksums, settings, losses, the GGUF's checksum and the evaluation, so
+the model can be traced back to the data it was trained on.
+
+```bash
+${CLAUDE_SKILL_DIR}/scripts/run release_notes.py --run <run> --eval <run>/eval.md --name <user>/<model>:<tag>
+```
 
 ### 4. Check it where it's used
 
