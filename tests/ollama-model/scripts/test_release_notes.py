@@ -15,7 +15,7 @@ RUN = {
     "steps": 792,
     "peak_gpu_gib": 7.5,
     "chat": {"system": "You are a helpful assistant.", "system_in_data": "none", "empty_think": False},
-    "gguf": {"path": "gguf_gguf/model.Q4_K_M.gguf", "quant": "q4_k_m", "bytes": 1929935584, "sha256": "c" * 64},
+    "gguf": {"path": "gguf/model.Q4_K_M.gguf", "quant": "q4_k_m", "bytes": 1929935584, "sha256": "c" * 64},
 }
 
 

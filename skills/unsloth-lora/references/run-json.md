@@ -26,7 +26,7 @@ This file is the same in the `unsloth-lora` and `ollama-model` skills.
     "empty_think": false
   },
   "gguf": {
-    "path": "gguf_gguf/qwen2.5-coder-3b-instruct.Q4_K_M.gguf",
+    "path": "gguf/qwen2.5-coder-3b-instruct.Q4_K_M.gguf",
     "quant": "q4_k_m",
     "bytes": 1929935584,
     "sha256": "<sha256 of the GGUF>"
