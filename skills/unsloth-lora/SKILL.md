@@ -39,8 +39,9 @@ ${CLAUDE_SKILL_DIR}/scripts/run check_data.py <data> --eval <eval.jsonl>
 ```
 
 Must print `ok`. It fails on broken lines, conversations that don't end with an assistant answer, and validation or
-evaluation examples that are also in training. It warns when a question repeats with a different answer: show the
-user the example, it can be legitimate (the answer depends on context) or a contradiction in the data. It also
+evaluation prompts that are also in training, with the same or a different answer: the model has seen them, so they
+measure recall. The fix is to take them out of validation or evaluation (or fix how the data is split), never to
+change training to make the check pass. It also
 reports how system messages are used: none, one shared, or mixed (see `references/chat-formats.md`).
 
 ### 2. Preflight the machine
@@ -78,8 +79,9 @@ ${CLAUDE_SKILL_DIR}/scripts/run train.py --model <base> --data <data> --out <run
 ```
 
 Runs for a while (minutes for a few thousand examples on a 3B model, longer for 7B). Start it with the Bash tool's
-background option and the output going to a log file in `<runs>`, and check the log instead of holding a session
-open. After a crash use `--resume`.
+background option and the output going to a log file in `<runs>`, instead of holding a session open, and check it
+with `${CLAUDE_SKILL_DIR}/scripts/run train_status.py <runs>/<run>`: step, losses, the step with the lowest
+validation loss and the time left, as of the last checkpoint. After a crash use `--resume`.
 Report train and validation loss and the peak GPU memory. A validation loss far above the training loss means
 overfitting: fewer epochs or more data.
 

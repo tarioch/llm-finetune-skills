@@ -66,11 +66,11 @@ def test_relative_run_folder_is_refused(tmp_path, fake_python):
     assert "absolute" in result.stderr
 
 
-def test_check_data_runs_with_plain_python(tmp_path):
-    (tmp_path / "train.jsonl").write_text("")
-    result = run("check_data.py", "--help", home=tmp_path)
+@pytest.mark.parametrize("script", ["check_data.py", "train_status.py"])
+def test_standard_library_scripts_run_with_plain_python(tmp_path, script):
+    result = run(script, "--help", home=tmp_path)  # no Unsloth Python configured
     assert result.returncode == 0, result.stderr
-    assert "train.jsonl" in result.stdout
+    assert "usage" in result.stdout
 
 
 @pytest.mark.parametrize("script", ["../train.py", "/bin/sh", "missing.py", ""])
