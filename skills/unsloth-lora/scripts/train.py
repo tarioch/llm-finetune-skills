@@ -208,7 +208,7 @@ def main() -> int:
     }
     (args.out / "run.json").write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
     print(f"saved the LoRA adapter to {adapter} and the run record to {args.out / 'run.json'}")
-    print(f"\nNext: export the GGUF with the skill's launcher: run export_gguf --run {args.out.resolve()}")
+    print(f"\nNext: export_gguf.py --run {args.out.resolve()}")
     return 0
 
 

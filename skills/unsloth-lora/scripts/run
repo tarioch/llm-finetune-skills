@@ -1,36 +1,74 @@
 #!/usr/bin/env bash
-# Run one of this skill's scripts with the Python of the Unsloth environment:
+# Run one of this skill's scripts: run <script.py> [args...]
 #
-#     run [-C <dir>] <script> [args...]     e.g.  run -C /abs/runs train --model ... --data /abs/data --out /abs/runs/my-3b
-#
-# -C runs the script in <dir> (Unsloth writes unsloth_compiled_cache/ into the current directory), so the command
-# needs no separate "cd".
-# The Python is $UNSLOTH_PYTHON, else the first line of ~/.config/llm-finetune/unsloth-python. Going through this
-# one command, instead of "<some python> <path>/train.py", is what lets SKILL.md pre-approve every script with a
-# single allowed-tools rule, whatever the Python's path is on this machine.
+# One fixed entry point, so the skill can allow it in its allowed-tools and Claude Code's auto mode runs the scripts
+# without refusing them. check_data.py, chat_format.py and train_status.py run with any Python 3. preflight.py,
+# train.py and export_gguf.py run with the Unsloth environment's Python, taken from $UNSLOTH_PYTHON or else from the
+# first line of ~/.config/llm-finetune/unsloth-python, and from the parent folder of their --out/--run folder
+# (created if missing): Unsloth writes unsloth_compiled_cache/ into the current directory.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ "${1:-}" = "-C" ]; then
-  cd "${2:?-C needs a directory}"
-  shift 2
-fi
 script="${1:-}"
-if [[ ! "$script" =~ ^[a-z_]+$ ]] || [ ! -f "$here/$script.py" ]; then
-  echo "usage: run [-C <dir>] <script> [args...], where <script> is one of:" >&2
-  for f in "$here"/*.py; do echo "  $(basename "$f" .py)" >&2; done
-  exit 2
+if [ -z "$script" ]; then
+    echo "usage: run <script.py> [args...]" >&2
+    exit 2
 fi
 shift
+case "$script" in
+    */* | *\\*) echo "run: give the name of a script in $here, not a path" >&2; exit 2 ;;
+esac
+if [ ! -f "$here/$script" ]; then
+    echo "run: there is no $script in $here" >&2
+    exit 2
+fi
 
-py="${UNSLOTH_PYTHON:-}"
-conf="${XDG_CONFIG_HOME:-$HOME/.config}/llm-finetune/unsloth-python"
-if [ -z "$py" ] && [ -f "$conf" ]; then
-  py="$(head -n 1 "$conf" | tr -d '\r')"
-fi
-if [ -z "$py" ]; then
-  echo "no Unsloth Python configured: set UNSLOTH_PYTHON, or write the path of the Unsloth environment's python" >&2
-  echo "to $conf" >&2
-  exit 2
-fi
-exec "$py" "$here/$script.py" "$@"
+case "$script" in
+    check_data.py | chat_format.py | train_status.py)
+        python=""
+        for candidate in python3 python; do
+            if command -v "$candidate" >/dev/null && "$candidate" -c "" 2>/dev/null; then
+                python="$candidate"
+                break
+            fi
+        done
+        if [ -z "$python" ]; then
+            echo "run: no Python 3 found (python3 or python)" >&2
+            exit 2
+        fi
+        ;;
+    *)
+        config="${XDG_CONFIG_HOME:-$HOME/.config}/llm-finetune/unsloth-python"
+        python="${UNSLOTH_PYTHON:-}"
+        if [ -z "$python" ] && [ -f "$config" ]; then
+            python="$(head -n 1 "$config" | tr -d '\r')"
+        fi
+        if [ -z "$python" ]; then
+            echo "run: set UNSLOTH_PYTHON, or write the path of the Unsloth environment's Python to $config" >&2
+            exit 2
+        fi
+        # the run folder decides the working directory
+        folder=""
+        previous=""
+        for arg in "$@"; do
+            case "$arg" in
+                --out=* | --run=*) folder="${arg#*=}" ;;
+            esac
+            case "$previous" in
+                --out | --run) folder="$arg" ;;
+            esac
+            previous="$arg"
+        done
+        if [ -n "$folder" ]; then
+            # the working directory changes, so a relative path would point somewhere else
+            case "$folder" in
+                /* | [A-Za-z]:*) ;;
+                *) echo "run: --out/--run must be an absolute path, got $folder" >&2; exit 2 ;;
+            esac
+            mkdir -p "$(dirname "$folder")"
+            cd "$(dirname "$folder")"
+        fi
+        ;;
+esac
+
+exec "$python" "$here/$script" "$@"

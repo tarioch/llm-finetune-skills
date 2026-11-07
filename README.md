@@ -20,12 +20,12 @@ Producing the training data is specific to each problem and stays in your own pr
 
 ## unsloth-lora
 
-1. **Data check** (`check_data.py`): structure, alternating turns, examples shared between training and validation
+1. **Data check** (`check_data.py`): structure, alternating turns, prompts shared between training and validation
    or evaluation, how system messages are used.
 2. **Preflight** (`preflight.py`): free GPU memory (and who else uses it), the training environment, disk space.
 3. **Training** (`train.py`): QLoRA with loss on the answers only. Prints the first example as the model sees it,
    the tokens that get loss and token lengths. Writes `run.json` with arguments, data checksums, losses and the
-   chat layout.
+   chat layout. `train_status.py` shows a running training's progress, losses and time left.
 4. **Export** (`export_gguf.py`): GGUF via Unsloth/llama.cpp.
 
 Supported chat format: ChatML, the `<|im_start|>`/`<|im_end|>` format of Qwen2.5, Qwen3, Qwen3.5, SmolLM3 and many
@@ -53,29 +53,19 @@ In Claude Code, add this repository as a plugin marketplace and install the plug
 Or copy a skill folder from `skills/` into `~/.claude/skills/` (personal) or `.claude/skills/` (one project). For
 claude.ai, zip a skill folder and upload it under Settings, Capabilities, Skills.
 
+The skills run their scripts through a launcher, `scripts/run`, which their `allowed-tools` allow, together with the
+Ollama and `nvidia-smi` commands they use (not `ollama push`). So they also work in Claude Code's auto mode, which
+refuses scripts it doesn't know. The launcher needs bash (on Windows, the Git Bash that Claude Code uses).
+
 Install the plugin yourself: in auto mode, Claude Code refuses to add a marketplace or install a plugin on Claude's
 own initiative.
-
-### Permissions
-
-Each skill pre-approves the commands it runs (`allowed-tools` in its SKILL.md), so they run without a permission
-prompt, also in auto mode, where Claude Code would otherwise refuse to run scripts it didn't write:
-
-- `unsloth-lora`: its launcher `scripts/run <script>` (which runs that script with the Unsloth Python),
-  `nvidia-smi`, `ollama ps` and `ollama stop`.
-- `ollama-model`: `python`/`python3` and `uv run python` on `modelfile.py` and `evaluate.py`, and `ollama create`,
-  `run`, `stop`, `pull`, `ps` and `list`. Publishing (`ollama cp`, `push`) and `ollama rm` still ask.
-
-The approval holds for the turn in which the skill is invoked, so Claude invokes the skill again for a step that
-comes after a message of yours.
 
 ## Requirements
 
 - `unsloth-lora`: an NVIDIA GPU and a Python environment with Unsloth installed (see the
-  [Unsloth installation docs](https://docs.unsloth.ai/get-started/installing-+-updating)). `check_data.py` needs
-  only the standard library. The scripts run through `scripts/run`, a Bash script (on Windows, Claude Code's Git
-  Bash), which takes the Unsloth Python from `$UNSLOTH_PYTHON` or the first line of
-  `~/.config/llm-finetune/unsloth-python`; Claude asks for the path and writes that file when neither is set.
+  [Unsloth installation docs](https://docs.unsloth.ai/get-started/installing-+-updating)). The launcher finds that
+  environment's Python through `UNSLOTH_PYTHON` or the first line of `~/.config/llm-finetune/unsloth-python`.
+  `check_data.py` and `train_status.py` need only the standard library.
 - `ollama-model`: Ollama. The scripts need only the standard library.
 
 ## License

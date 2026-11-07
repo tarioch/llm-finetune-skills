@@ -31,12 +31,15 @@
 - `The tokenizer has new PAD/BOS/EOS tokens ... {'bos_token_id': None}`: Qwen models have no BOS token, Unsloth
   only reports aligning the config with the tokenizer.
 - Deprecation warnings from transformers (`use_return_dict`, `has_cuda` and similar).
+- The `epoch` in the training log shows about half the expected value (0.25 at step 200 of a 2-epoch run of 792
+  steps, where 0.5 would be right; seen with unsloth 2026.9.11). Training still runs every step, go by the step
+  count.
 
 ## Export
 
-- **Unsloth reports `[CRITICAL] Harvests environment variables/secrets AND makes network calls`** about llama.cpp's
-  `gguf-py/gguf/utility.py`: that is llama.cpp's code for reading safetensors from Hugging Face, which sends
-  `HF_TOKEN` if one is set. The export doesn't need it (it converts local files). Tell the user; to use a converter
+- **Unsloth reports `[CRITICAL] Harvests environment variables/secrets AND makes network calls`** on every export,
+  about llama.cpp's `gguf-py/gguf/utility.py`: that is llama.cpp's code for reading safetensors from Hugging Face,
+  which sends `HF_TOKEN` if one is set. The export doesn't need it (it converts local files). Tell the user; to use a converter
   they reviewed, point `UNSLOTH_LLAMA_CPP_SCRIPTS_DIR` at it.
 
 - **llama.cpp missing or build fails**: Unsloth builds llama.cpp on first export, which needs network access and a

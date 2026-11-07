@@ -18,7 +18,7 @@ def allowed_rules(skill: str) -> list[str]:
     head = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8").split("---")[1]
     line = next(line for line in head.splitlines() if line.startswith("allowed-tools: "))
     rules = re.findall(r"Bash\(([^)]*)\)", line.removeprefix("allowed-tools: "))
-    assert " ".join(f"Bash({r})" for r in rules) == line.removeprefix("allowed-tools: "), "only Bash rules expected"
+    assert ", ".join(f"Bash({r})" for r in rules) == line.removeprefix("allowed-tools: "), "only Bash rules expected"
     return rules
 
 
@@ -58,14 +58,6 @@ def test_scripts_are_called_through_the_skill_dir(skill):
 def test_rules_are_narrow():
     for skill in sorted(p.name for p in SKILLS.iterdir()):
         for rule in allowed_rules(skill):
-            assert rule.split()[0] in {
-                "${CLAUDE_SKILL_DIR}/scripts/run",
-                "python",
-                "python3",
-                "uv",
-                "ollama",
-                "nvidia-smi",
-            }
-            assert not rule.startswith(("python *", "python3 *", "uv run python *")), (
-                f"{skill}: {rule} allows any script"
+            assert rule.split()[0] in {"${CLAUDE_SKILL_DIR}/scripts/run", "ollama", "nvidia-smi"}, (
+                f"{skill}: {rule} allows more than the launcher and the Ollama/GPU commands"
             )
