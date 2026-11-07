@@ -5,6 +5,7 @@ Run it with the Python of the Unsloth environment (the one ``train.py`` will use
 
     python preflight.py                     # GPU, environment, disk in the current folder
     python preflight.py --need-gib 8 --out outputs/my-run
+    python preflight.py --params-b 7 --out outputs/my-run   # estimates the need from the model size
 
 Exits non-zero when training would fail or crawl: too little free GPU memory (other processes, often games or a
 second model loaded in Ollama, are listed), Unsloth or torch not importable, CUDA not available, too little disk.
@@ -49,12 +50,35 @@ def gpu_processes() -> list[tuple[str, str]]:
     return [(row[0], row[1]) for row in parse_csv(out) if len(row) == 2]
 
 
+def estimate_gib(params_b: float) -> float:
+    """Peak GPU memory of a 4-bit LoRA run at the defaults (sequence length 1024, batch size 4), in GiB.
+
+    A straight line through two measured runs on a 12 GB card (3B: 6.6 GiB, 7B: 8.1 GiB). Only good for roughly 3 to
+    7 billion parameters; another sequence length or model family moves it.
+    """
+    return 5.5 + 0.375 * params_b
+
+
+def batch_advice(free_gib: float, params_b: float) -> str | None:
+    """What to change when the estimate does not fit into the free memory, or None when it fits."""
+    if free_gib >= estimate_gib(params_b):
+        return None
+    return (
+        f"about {estimate_gib(params_b):.1f} GiB expected for a {params_b:g}B model at batch size 4, "
+        f"{free_gib:.1f} GiB free: use --batch-size 2 --grad-accum 8 (same effective batch), "
+        "and --batch-size 1 --grad-accum 16 if that still runs out of memory"
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--need-gib", type=float, default=8.0, help="free GPU memory the run needs (default %(default)s)")
+    ap.add_argument("--need-gib", type=float, help="free GPU memory the run needs (default 8, or the estimate)")
+    ap.add_argument("--params-b", type=float, help="model size in billions of parameters, to estimate the need")
     ap.add_argument("--out", type=Path, default=Path("."), help="where checkpoints and the GGUF will be written")
     ap.add_argument("--need-disk-gib", type=float, default=30.0, help="free disk at --out (default %(default)s)")
     args = ap.parse_args()
+    if args.need_gib is None:
+        args.need_gib = estimate_gib(args.params_b) if args.params_b else 8.0
     problems = []
 
     try:
@@ -67,6 +91,10 @@ def main() -> int:
         print(f"GPU {g['index']} {g['name']}: {free:.1f} of {g['total'] / 1024:.1f} GiB free")
     if found and max((g["total"] - g["used"]) / 1024 for g in found) < args.need_gib:
         problems.append(f"less than {args.need_gib:g} GiB GPU memory free")
+        if args.params_b:
+            advice = batch_advice(max((g["total"] - g["used"]) / 1024 for g in found), args.params_b)
+            if advice:
+                print(f"  {advice}")
         for name, mib in gpu_processes():
             print(f"  using the GPU: {name} ({mib} MiB)")
         print("  (games and other graphics processes only show in plain `nvidia-smi`; `ollama ps` lists loaded models)")

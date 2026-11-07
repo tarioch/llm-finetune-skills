@@ -47,13 +47,15 @@ reports how system messages are used: none, one shared, or mixed (see `reference
 ### 2. Preflight the machine
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/run preflight.py --need-gib 8 --out <runs>/<run>
+${CLAUDE_SKILL_DIR}/scripts/run preflight.py --params-b <billions of parameters> --out <runs>/<run>
 ```
 
 Free GPU memory matters more than total: games, a browser with GPU acceleration, or a model a local server still
 holds (`ollama ps`, unload with `ollama stop <model>`) can leave too little. If preflight lists other GPU users,
-tell the user and let them decide, don't kill processes. Roughly: a 3B model in 4-bit trains in 6 to 8 GiB at
-sequence length 1024 and batch size 4, a 7B in 10 to 12 GiB; lower `--batch-size` and raise `--grad-accum` to fit.
+tell the user and let them decide, don't kill processes. With `--params-b` it estimates the need (a 3B model in
+4-bit peaked at 6.6 GiB at sequence length 1024 and batch size 4, a 7B at 8.1 GiB) and, when the free memory is
+less, prints the `--batch-size`/`--grad-accum` pair to use instead. It is an estimate from two runs: for other
+sizes or sequence lengths pass `--need-gib` and watch the peak the smoke run reports.
 
 If an import fails, the environment is broken, see `references/troubleshooting.md` before reinstalling anything.
 
