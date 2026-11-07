@@ -16,7 +16,7 @@ def run(*args, path=None):
     env = dict(os.environ)
     if path is not None:
         env["PATH"] = f"{path}{os.pathsep}{env['PATH']}"
-    return subprocess.run(["bash", str(RUN), *args], capture_output=True, text=True, env=env)
+    return subprocess.run(["bash", RUN.as_posix(), *args], capture_output=True, text=True, env=env)
 
 
 def test_runs_a_script_with_python():

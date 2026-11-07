@@ -17,9 +17,15 @@ pytestmark = pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash
 def fake_python(tmp_path):
     """A stand-in for the Unsloth Python that prints its working directory and arguments."""
     script = tmp_path / "fake-python"
-    script.write_text('#!/usr/bin/env bash\necho "cwd=$(pwd)"\necho "args=$*"\n')
+    # pwd -W prints a Windows path in Git Bash, plain pwd elsewhere
+    script.write_text('#!/usr/bin/env bash\necho "cwd=$(pwd -W 2>/dev/null || pwd)"\necho "args=$*"\n')
     script.chmod(0o755)
     return script
+
+
+def cwd(result):
+    line = next(line for line in result.stdout.splitlines() if line.startswith("cwd="))
+    return Path(line.removeprefix("cwd=")).resolve()
 
 
 def run(*args, env=None, home=None):
@@ -27,14 +33,14 @@ def run(*args, env=None, home=None):
     if home is not None:
         environment["HOME"] = str(home)
     environment.update(env or {})
-    return subprocess.run(["bash", str(RUN), *args], capture_output=True, text=True, env=environment)
+    return subprocess.run(["bash", RUN.as_posix(), *args], capture_output=True, text=True, env=environment)
 
 
 def test_unsloth_scripts_use_unsloth_python_in_the_runs_folder(tmp_path, fake_python):
     out = tmp_path / "runs" / "my-run"
     result = run("train.py", "--model", "m", "--out", str(out), env={"UNSLOTH_PYTHON": str(fake_python)})
     assert result.returncode == 0, result.stderr
-    assert f"cwd={tmp_path / 'runs'}" in result.stdout  # unsloth_compiled_cache/ lands next to the runs
+    assert cwd(result) == (tmp_path / "runs").resolve()  # unsloth_compiled_cache/ lands next to the runs
     assert (tmp_path / "runs").is_dir()  # created if missing
     assert f"train.py --model m --out {out}" in result.stdout
 
@@ -42,7 +48,7 @@ def test_unsloth_scripts_use_unsloth_python_in_the_runs_folder(tmp_path, fake_py
 def test_run_option_with_equals_sign(tmp_path, fake_python):
     result = run("export_gguf.py", f"--run={tmp_path / 'runs' / 'r'}", env={"UNSLOTH_PYTHON": str(fake_python)})
     assert result.returncode == 0, result.stderr
-    assert f"cwd={tmp_path / 'runs'}" in result.stdout
+    assert cwd(result) == (tmp_path / "runs").resolve()
 
 
 def test_unsloth_python_from_the_config_file(tmp_path, fake_python):
