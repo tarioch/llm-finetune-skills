@@ -81,7 +81,8 @@ ${CLAUDE_SKILL_DIR}/scripts/run train.py --model <base> --data <data> --out <run
 ```
 
 Runs for a while (minutes for a few thousand examples on a 3B model, longer for 7B). Start it with the Bash tool's
-background option and the output going to a log file in `<runs>`, instead of holding a session open, and check it
+background option instead of holding a session open (the tool keeps the output in a file, that is the log: don't add
+`>`, `;` or `&&` to the command, the pre-approval covers the launcher command exactly as shown), and check it
 with `${CLAUDE_SKILL_DIR}/scripts/run train_status.py <runs>/<run>`: step, losses, the step with the lowest
 validation loss and the time left, as of the last checkpoint. After a crash use `--resume`.
 Report train and validation loss and the peak GPU memory. A validation loss far above the training loss means
@@ -94,8 +95,8 @@ ${CLAUDE_SKILL_DIR}/scripts/run export_gguf.py --run <runs>/<run>
 ```
 
 Takes a few minutes for a 3B model and more than ten for a 7B one (merging, converting, quantizing), which is longer
-than the Bash tool lets a foreground command run: start it in the background like the training, with the output in a
-log file in `<runs>`, and wait for it to finish. It writes the GGUF to `<run>/gguf/` and records it in `run.json`
+than the Bash tool lets a foreground command run: start it in the background like the training and wait for it to
+finish. It writes the GGUF to `<run>/gguf/` and records it in `run.json`
 with its size and checksum. It removes the merged
 16-bit model (several GB, `--keep-merged` keeps it, and then the GGUF stays in `<run>/gguf_gguf/`)
 and the Modelfile Unsloth writes next to the GGUF: that one uses the stock template, not the layout training used,
