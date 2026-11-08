@@ -85,6 +85,12 @@ The scripts are plain Python and bash in this repository and run locally.
   which installs the project's locked dependencies.
 - No script sends telemetry or contacts any other service.
 
+## Privacy
+
+The plugin collects no data and has no server of its own: everything runs on your machine, and the only traffic is
+the downloads and uploads listed under "What the skills run and connect to", which you start or approve. Questions
+and bug reports go to the [issue tracker](https://github.com/tarioch/llm-finetune-skills/issues).
+
 ## License
 
 [MIT](LICENSE). The chat templates in `tests/fixtures/chat-templates/` belong to their models (Apache 2.0), see
