@@ -75,7 +75,8 @@ The scripts are plain Python and bash in this repository and run locally.
 
 - `unsloth-lora`: training and export run in your Unsloth environment. Unsloth and Hugging Face `transformers`
   download the base model from Hugging Face (or read a local copy), and Unsloth builds llama.cpp from GitHub on
-  the first export. These libraries read `HF_TOKEN` if it is set; the scripts don't read or send it themselves.
+  the first export. These libraries may use a Hugging Face access token if one is configured; the scripts don't read or send it
+  themselves.
   `preflight.py` runs `nvidia-smi`. The scripts write into the run folder, Unsloth writes its compile cache next to
   it and the libraries keep their download caches.
 - `ollama-model`: `evaluate.py` sends the evaluation prompts to the Ollama server given by `--host` (default
