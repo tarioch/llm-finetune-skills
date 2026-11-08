@@ -3,7 +3,7 @@
 #
 # One fixed entry point, so the skill can allow it in its allowed-tools and Claude Code's auto mode runs the scripts
 # without refusing them. The scripts need only the standard library and run with any Python 3. --uv <project> runs it
-# with `uv run --project <project> python` instead: for an evaluate.py --check function that imports the project's
+# with `uv run --locked --project <project> python` instead: for an evaluate.py --check function that imports the project's
 # own code or dependencies.
 set -euo pipefail
 
@@ -32,7 +32,7 @@ if [ ! -f "$here/$script" ]; then
 fi
 
 if [ -n "$project" ]; then
-    exec uv run --project "$project" python "$here/$script" "$@"
+    exec uv run --locked --project "$project" python "$here/$script" "$@"
 fi
 for candidate in python3 python; do
     if command -v "$candidate" >/dev/null && "$candidate" -c "" 2>/dev/null; then

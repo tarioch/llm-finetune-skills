@@ -69,6 +69,21 @@ own initiative.
   `check_data.py` and `train_status.py` need only the standard library.
 - `ollama-model`: Ollama. The scripts need only the standard library.
 
+## What the skills run and connect to
+
+The scripts are plain Python and bash in this repository and run locally.
+
+- `unsloth-lora`: training and export run in your Unsloth environment. Unsloth and Hugging Face `transformers`
+  download the base model from Hugging Face (or read a local copy), and Unsloth builds llama.cpp from GitHub on
+  the first export. These libraries read `HF_TOKEN` if it is set; the scripts don't read or send it themselves.
+  `preflight.py` runs `nvidia-smi`. The scripts write into the run folder, Unsloth writes its compile cache next to
+  it and the libraries keep their download caches.
+- `ollama-model`: `evaluate.py` sends the evaluation prompts to the Ollama server given by `--host` (default
+  `http://localhost:11434`). `ollama pull` downloads models from ollama.com, `ollama push` uploads a model there
+  and is only run after you agree. With `--uv <project>`, the launcher runs `uv run --locked` in that project,
+  which installs the project's locked dependencies.
+- No script sends telemetry or contacts any other service.
+
 ## License
 
 [MIT](LICENSE). The chat templates in `tests/fixtures/chat-templates/` belong to their models (Apache 2.0), see
