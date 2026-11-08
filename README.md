@@ -56,6 +56,7 @@ claude.ai, zip a skill folder and upload it under Settings, Capabilities, Skills
 The skills run their scripts through a launcher, `scripts/run`, which their `allowed-tools` allow, together with the
 Ollama and `nvidia-smi` commands they use (not `ollama push`). So they also work in Claude Code's auto mode, which
 refuses scripts it doesn't know. The launcher needs bash (on Windows, the Git Bash that Claude Code uses).
+In headless mode (`claude -p`) pass `--allowedTools Skill`, otherwise the Skill call itself is refused.
 
 Install the plugin yourself: in auto mode, Claude Code refuses to add a marketplace or install a plugin on Claude's
 own initiative.
