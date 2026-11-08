@@ -32,7 +32,7 @@ def test_uv_runs_in_the_given_project(tmp_path):
     fake_uv.chmod(0o755)
     result = run("--uv", "/some/project", "evaluate.py", "--eval", "e.jsonl", path=fake_uv.parent)
     assert result.returncode == 0, result.stderr
-    assert result.stdout.startswith("uv run --project /some/project python ")
+    assert result.stdout.startswith("uv run --locked --project /some/project python ")
     assert result.stdout.rstrip().endswith("evaluate.py --eval e.jsonl")
 
 

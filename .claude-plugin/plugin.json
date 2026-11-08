@@ -1,7 +1,7 @@
 {
   "name": "llm-finetune",
   "description": "Fine-tune LLMs with a LoRA on a local GPU (Unsloth, skill unsloth-lora) and package, evaluate and publish them with Ollama (skill ollama-model), with a Modelfile that matches training.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": {
     "name": "Patrick Ruckstuhl"
   },
