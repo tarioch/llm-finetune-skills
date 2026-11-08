@@ -11,7 +11,7 @@ path, the project environment exists for the tests and the checks.
 | `skills/<skill>/SKILL.md` | the workflow Claude follows, frontmatter `name` must match the folder |
 | `skills/<skill>/scripts/` | the scripts the skill runs, see the docstring of each |
 | `skills/<skill>/references/` | details SKILL.md points to, read only when needed |
-| `.claude-plugin/` | `plugin.json` (the plugin, all skills), `marketplace.json` (so the repo can be added as a marketplace), and `icon.png` (1024 px) rendered from `icon.svg` |
+| `.claude-plugin/` | `plugin.json` (the plugin, all skills), `marketplace.json` (so the repo can be added as a marketplace), and the plugin's icon (a 1024 px PNG rendered from the SVG next to it) |
 | `.claude/CLAUDE.md` | instructions for Claude working on this repository: not at the root, where the plugin validator warns that it would look like context shipped with the plugin |
 | `tests/<skill>/` | tests for one skill, mirroring `skills/<skill>/` (`tests/unsloth-lora/scripts/test_check_data.py` tests `skills/unsloth-lora/scripts/check_data.py`); its `conftest.py` puts the skill's `scripts/` on the import path |
 | `tests/test_handoff.py` | tests across skills: what `unsloth-lora` records in `run.json` makes `ollama-model` build the prompt training saw |
